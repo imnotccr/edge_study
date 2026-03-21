@@ -1,0 +1,72 @@
+﻿<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>数据汇总</title>
+    <link rel="stylesheet" href="../assets/styles/common.css" />
+  </head>
+  <body>
+    <main class="page-shell stack">
+      <section class="hero">
+        <div>
+          <div class="kicker">Dashboard</div>
+          <h1>专注数据汇总</h1>
+          <p>这里展示当前保留期内的会话、拦截、应急解锁和开发阶段错误日志，帮助你回看自己的专注模式。</p>
+        </div>
+      </section>
+
+      <section id="dashboardNotice" class="notice hidden"></section>
+
+      <section class="card stack">
+        <div id="rangeButtons" class="filter-row"></div>
+        <div class="metric-grid">
+          <div class="metric">
+            <span class="label">专注总时长</span>
+            <strong id="focusMinutesText">0 分钟</strong>
+          </div>
+          <div class="metric">
+            <span class="label">完成会话数</span>
+            <strong id="completedSessionsText">0</strong>
+          </div>
+          <div class="metric">
+            <span class="label">被拦截次数</span>
+            <strong id="blockedCountText">0</strong>
+          </div>
+          <div class="metric">
+            <span class="label">解锁次数</span>
+            <strong id="unlockCountText">0</strong>
+          </div>
+        </div>
+      </section>
+
+      <section class="card stack">
+        <h2>高频被拦截域名</h2>
+        <div id="topBlockedList" class="list"></div>
+      </section>
+
+      <section class="card stack">
+        <h2>学习会话记录</h2>
+        <div id="sessionHistoryList" class="list"></div>
+      </section>
+
+      <section class="card stack">
+        <h2>应急解锁记录</h2>
+        <div id="unlockHistoryList" class="list"></div>
+      </section>
+
+      <section id="errorLogSection" class="card stack hidden">
+        <div style="display: flex; justify-content: space-between; gap: 12px; align-items: center; flex-wrap: wrap;">
+          <div>
+            <h2>错误日志</h2>
+            <p class="meta-text">开发测试阶段记录的错误事件，错误码会直接显示在日志标题里。</p>
+          </div>
+          <button id="clearErrorLogsButton" class="button ghost" type="button">清空错误日志</button>
+        </div>
+        <div id="errorLogList" class="list"></div>
+      </section>
+    </main>
+
+    <script type="module" src="dashboard.js"></script>
+  </body>
+</html>

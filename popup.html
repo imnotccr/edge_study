@@ -1,0 +1,67 @@
+﻿<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>学习专注护栏</title>
+    <link rel="stylesheet" href="assets/styles/common.css" />
+  </head>
+  <body>
+    <main class="popup-shell stack">
+      <section class="hero">
+        <div>
+          <div class="kicker">
+            <span class="brand-mark">专</span>
+            学习专注护栏
+          </div>
+          <h1>当前专注状态</h1>
+          <p id="popupHint">加载中...</p>
+        </div>
+      </section>
+
+      <section class="card">
+        <div id="statusBadge" class="status-badge">未开始</div>
+        <div class="metric-grid">
+          <div class="metric">
+            <span class="label">学习目的</span>
+            <strong id="purposeText">暂无</strong>
+          </div>
+          <div class="metric">
+            <span class="label">剩余时间</span>
+            <strong id="remainingText" class="mono">--:--</strong>
+          </div>
+          <div class="metric">
+            <span class="label">预计结束</span>
+            <strong id="endAtText" class="mono">--:--</strong>
+          </div>
+          <div class="metric">
+            <span class="label">白名单数量</span>
+            <strong id="whitelistCountText">0</strong>
+          </div>
+        </div>
+      </section>
+
+      <section class="card stack">
+        <div class="button-grid">
+          <button id="startButton" class="button">开始专注</button>
+          <button id="unlockButton" class="button secondary">应急解锁</button>
+          <button id="optionsButton" class="button secondary">白名单与设置</button>
+          <button id="dashboardButton" class="button secondary">数据汇总</button>
+        </div>
+      </section>
+
+      <section id="debugCard" class="card hidden">
+        <div class="kicker">开发模式</div>
+        <h3>调试快捷操作</h3>
+        <p class="meta-text">仅开发和测试阶段可用，用于快速结束当前专注并清理拦截状态。</p>
+        <div class="inline-actions" style="margin-top: 14px;">
+          <button id="debugExitButton" class="button ghost">快速退出当前专注</button>
+        </div>
+      </section>
+
+      <p id="popupMessage" class="inline-note"></p>
+    </main>
+
+    <script type="module" src="popup.js"></script>
+  </body>
+</html>

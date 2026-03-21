@@ -1,0 +1,74 @@
+﻿<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>应急解锁</title>
+    <link rel="stylesheet" href="../assets/styles/common.css" />
+  </head>
+  <body>
+    <main class="page-shell stack">
+      <section class="hero">
+        <div>
+          <div class="kicker">Emergency Unlock</div>
+          <h1>应急解锁</h1>
+          <p>需要临时放行或提前结束时，请先说明原因，并完整答对 5 道两位数乘法题。</p>
+        </div>
+      </section>
+
+      <section id="unlockNotice" class="notice hidden"></section>
+
+      <section id="unlockSessionCard" class="card stack">
+        <div class="metric-grid">
+          <div class="metric">
+            <span class="label">学习目的</span>
+            <strong id="unlockPurposeText">--</strong>
+          </div>
+          <div class="metric">
+            <span class="label">剩余时间</span>
+            <strong id="unlockRemainingText" class="mono">--:--</strong>
+          </div>
+        </div>
+      </section>
+
+      <section id="unlockChallengeCard" class="card stack hidden">
+        <div class="field">
+          <label for="unlockReasonInput">解锁原因</label>
+          <textarea id="unlockReasonInput" class="textarea" placeholder="请简要说明本次解锁原因"></textarea>
+        </div>
+
+        <div class="field">
+          <span class="label">答题区</span>
+          <div id="questionList" class="list"></div>
+        </div>
+
+        <div class="inline-actions">
+          <button id="submitUnlockButton" class="button">提交答案</button>
+        </div>
+      </section>
+
+      <section id="unlockCooldownCard" class="card hidden">
+        <div class="kicker">Cooldown</div>
+        <h2>当前处于冷却时间</h2>
+        <p>请等待冷却结束后再重新尝试。</p>
+        <div class="metric-grid">
+          <div class="metric">
+            <span class="label">剩余冷却</span>
+            <strong id="cooldownRemainingText" class="mono">--:--</strong>
+          </div>
+        </div>
+      </section>
+
+      <section id="unlockChoiceCard" class="card stack hidden">
+        <div class="kicker">Choice</div>
+        <h2>全部答对，可以选择解锁方式</h2>
+        <div class="inline-actions">
+          <button id="temporaryAllowButton" class="button">临时放行 10 分钟</button>
+          <button id="endSessionButton" class="button secondary">结束本次专注</button>
+        </div>
+      </section>
+    </main>
+
+    <script type="module" src="unlock.js"></script>
+  </body>
+</html>

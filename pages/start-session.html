@@ -1,0 +1,49 @@
+﻿<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>开始专注</title>
+    <link rel="stylesheet" href="../assets/styles/common.css" />
+  </head>
+  <body>
+    <main class="page-shell stack">
+      <section class="hero">
+        <div>
+          <div class="kicker">Start Session</div>
+          <h1>开始本次专注</h1>
+          <p>先写下这次要完成的学习目标，再选择你希望维持多久的专注状态。</p>
+        </div>
+      </section>
+
+      <section id="startBanner" class="notice hidden"></section>
+
+      <section class="card">
+        <form id="startForm">
+          <div class="field">
+            <label for="purposeInput">学习目的</label>
+            <textarea id="purposeInput" class="textarea" placeholder="例如：完成数据库课程第 2 章笔记"></textarea>
+          </div>
+
+          <div class="field">
+            <span class="label">快捷时长</span>
+            <div id="quickDurationButtons" class="chip-row"></div>
+          </div>
+
+          <div class="field">
+            <label for="customDurationInput">自定义时长（分钟）</label>
+            <input id="customDurationInput" class="input" type="number" min="1" step="1" placeholder="输入分钟数" />
+            <p id="capHint" class="inline-note"></p>
+          </div>
+
+          <div class="inline-actions">
+            <button type="submit" class="button">开始专注</button>
+            <a href="options.html" class="button secondary">先去配置白名单</a>
+          </div>
+        </form>
+      </section>
+    </main>
+
+    <script type="module" src="start-session.js"></script>
+  </body>
+</html>

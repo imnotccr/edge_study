@@ -1,0 +1,45 @@
+﻿<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>拦截提示</title>
+    <link rel="stylesheet" href="../assets/styles/common.css" />
+  </head>
+  <body>
+    <main class="page-shell">
+      <section class="card center-card stack">
+        <div class="big-lock">锁</div>
+        <div class="kicker">Blocked</div>
+        <h1>当前为学习专注时段</h1>
+        <p id="blockDescription">本站不在白名单内，因此本次访问已被拦截。</p>
+
+        <div class="metric-grid">
+          <div class="metric">
+            <span class="label">当前网站</span>
+            <strong id="blockedDomainText">--</strong>
+          </div>
+          <div class="metric">
+            <span class="label">学习目的</span>
+            <strong id="blockPurposeText">--</strong>
+          </div>
+          <div class="metric">
+            <span class="label">剩余时间</span>
+            <strong id="blockRemainingText" class="mono">--:--</strong>
+          </div>
+          <div class="metric">
+            <span class="label">预计结束</span>
+            <strong id="blockEndAtText" class="mono">--:--</strong>
+          </div>
+        </div>
+
+        <div class="inline-actions">
+          <button id="backToOptionsButton" class="button secondary" type="button">打开白名单设置</button>
+          <button id="unlockFromBlockButton" class="button" type="button">应急解锁</button>
+        </div>
+      </section>
+    </main>
+
+    <script type="module" src="block.js"></script>
+  </body>
+</html>

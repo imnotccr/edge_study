@@ -1,0 +1,39 @@
+﻿{
+  "manifest_version": 3,
+  "name": "学习专注护栏",
+  "description": "学习时仅允许访问白名单网站的专注扩展。",
+  "version": "0.1.0",
+  "action": {
+    "default_title": "学习专注护栏",
+    "default_popup": "popup.html"
+  },
+  "background": {
+    "service_worker": "background/service-worker.js",
+    "type": "module"
+  },
+  "options_page": "pages/options.html",
+  "permissions": [
+    "storage",
+    "declarativeNetRequest",
+    "declarativeNetRequestWithHostAccess",
+    "alarms",
+    "tabs",
+    "webNavigation"
+  ],
+  "host_permissions": [
+    "<all_urls>"
+  ],
+  "web_accessible_resources": [
+    {
+      "resources": [
+        "pages/block.html",
+        "pages/block.js",
+        "assets/styles/common.css"
+      ],
+      "matches": [
+        "<all_urls>"
+      ]
+    }
+  ],
+  "incognito": "split"
+}
