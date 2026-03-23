@@ -1,4 +1,4 @@
-﻿<!doctype html>
+<!doctype html>
 <html lang="zh-CN">
   <head>
     <meta charset="UTF-8" />
@@ -6,10 +6,16 @@
     <title>拦截提示</title>
     <link rel="stylesheet" href="../assets/styles/common.css" />
   </head>
-  <body>
+  <body class="block-page">
     <main class="page-shell">
-      <section class="card center-card stack">
-        <div class="big-lock">锁</div>
+      <section class="card center-card stack block-card">
+        <div class="big-lock" aria-hidden="true">
+          <span class="big-lock-shackle"></span>
+          <span class="big-lock-body">
+            <span class="big-lock-keyhole"></span>
+          </span>
+          <span class="big-lock-glow"></span>
+        </div>
         <div class="kicker">Blocked</div>
         <h1>当前为学习专注时段</h1>
         <p id="blockDescription">本站不在白名单内，因此本次访问已被拦截。</p>

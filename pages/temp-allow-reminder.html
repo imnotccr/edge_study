@@ -1,0 +1,43 @@
+﻿<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>临时放行提醒</title>
+    <link rel="stylesheet" href="../assets/styles/common.css" />
+  </head>
+  <body class="reminder-body">
+    <main class="reminder-shell">
+      <section class="card reminder-card stack">
+        <div class="reminder-header">
+          <div class="reminder-topline">
+            <div id="reminderStatusBadge" class="status-badge warning">临时放行</div>
+            <span class="reminder-mini-label">专注护栏提醒</span>
+          </div>
+          <h1>临时放行中</h1>
+          <p id="reminderDescription" class="meta-text">倒计时结束后会自动恢复拦截。</p>
+        </div>
+
+        <section class="reminder-countdown-panel">
+          <span class="reminder-caption">剩余时间</span>
+          <strong id="reminderCountdownText" class="reminder-countdown mono">--:--</strong>
+          <div class="reminder-time-chip">
+            <span>恢复拦截</span>
+            <strong id="reminderEndAtText" class="mono">--:--</strong>
+          </div>
+        </section>
+
+        <section class="reminder-purpose-card">
+          <span class="label">学习目的</span>
+          <strong id="reminderPurposeText">--</strong>
+        </section>
+
+        <div class="inline-actions reminder-actions">
+          <button id="openDashboardButton" class="button secondary" type="button">查看数据汇总</button>
+        </div>
+      </section>
+    </main>
+
+    <script type="module" src="temp-allow-reminder.js"></script>
+  </body>
+</html>

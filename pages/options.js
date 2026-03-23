@@ -1,4 +1,4 @@
-﻿import { MESSAGE_TYPES } from "../shared/constants.js";
+import { MESSAGE_TYPES } from "../shared/constants.js";
 import { reportPageError, installGlobalErrorHandlers } from "../shared/error-log.js";
 import { ERROR_CODES, formatErrorLabel } from "../shared/errors.js";
 import { sendRuntimeMessage } from "../shared/api.js";
@@ -20,7 +20,6 @@ const elements = {
   whitelistList: document.querySelector("#whitelistList"),
   saveWhitelistButton: document.querySelector("#saveWhitelistButton"),
   durationCapSelect: document.querySelector("#durationCapSelect"),
-  retentionInput: document.querySelector("#retentionInput"),
   cooldownEnabledInput: document.querySelector("#cooldownEnabledInput"),
   cooldownMinutesInput: document.querySelector("#cooldownMinutesInput"),
   themeContainer: document.querySelector("#themeContainer"),
@@ -150,7 +149,6 @@ function renderThemes() {
 function renderSettings() {
   renderDurationCapOptions();
   elements.durationCapSelect.value = draftSettings.customDurationCapOption;
-  elements.retentionInput.value = String(draftSettings.retentionDays);
   elements.cooldownEnabledInput.checked = Boolean(draftSettings.unlockCooldownEnabled);
   elements.cooldownMinutesInput.value = String(draftSettings.unlockCooldownMinutes);
   elements.cooldownMinutesInput.disabled = !elements.cooldownEnabledInput.checked || hasActiveSession;
@@ -181,11 +179,28 @@ function syncLockState() {
   elements.cooldownMinutesInput.disabled = !elements.cooldownEnabledInput.checked || hasActiveSession;
 }
 
+function refreshLockState(nextHasActiveSession, { showReadonlyNotice = false } = {}) {
+  const wasLocked = hasActiveSession;
+  hasActiveSession = Boolean(nextHasActiveSession);
+
+  if (!draftSettings) {
+    return;
+  }
+
+  renderPresets();
+  renderWhitelist();
+  renderSettings();
+  syncLockState();
+
+  if (!wasLocked && hasActiveSession && showReadonlyNotice) {
+    showNotice("专注已开始，当前页面已切换为只读状态。", "warning");
+  }
+}
+
 function collectSettings() {
   return {
     theme: selectedTheme,
     customDurationCapOption: elements.durationCapSelect.value,
-    retentionDays: Number(elements.retentionInput.value),
     unlockCooldownEnabled: elements.cooldownEnabledInput.checked,
     unlockCooldownMinutes: Number(elements.cooldownMinutesInput.value)
   };
@@ -218,7 +233,7 @@ async function loadOptions() {
   presets = data.presets;
   durationCapOptions = data.durationCapOptions;
   themes = data.themes;
-  hasActiveSession = data.hasActiveSession;
+  hasActiveSession = Boolean(data.hasActiveSession);
 
   renderPresets();
   renderWhitelist();
@@ -270,6 +285,16 @@ elements.cooldownEnabledInput.addEventListener("change", () => {
 elements.saveWhitelistButton.addEventListener("click", saveAll);
 
 elements.saveSettingsButton.addEventListener("click", saveAll);
+
+chrome.storage.onChanged.addListener((changes, areaName) => {
+  if (areaName !== "local" || !changes.currentSession) {
+    return;
+  }
+
+  refreshLockState(Boolean(changes.currentSession.newValue), {
+    showReadonlyNotice: !Boolean(changes.currentSession.oldValue) && Boolean(changes.currentSession.newValue)
+  });
+});
 
 installGlobalErrorHandlers("pages/options");
 await initTheme();

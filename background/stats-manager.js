@@ -1,15 +1,18 @@
-﻿import { STORAGE_KEYS } from "../shared/constants.js";
+import { STORAGE_KEYS } from "../shared/constants.js";
 import { extractDomainFromUrl } from "../shared/domain.js";
 import { getStartOfToday, getStartOfWeek } from "../shared/time.js";
-import { readState, replaceState } from "../shared/storage.js";
+import { updateState } from "../shared/storage.js";
+
+const DATA_RETENTION_DAYS = 7;
+const DATA_RETENTION_MS = DATA_RETENTION_DAYS * 24 * 60 * 60 * 1000;
+const TOP_BLOCKED_DOMAIN_LIMIT = 5;
 
 function createId(prefix) {
   return `${prefix}-${crypto.randomUUID()}`;
 }
 
-function getRetentionCutoff(state) {
-  const retentionDays = Math.max(1, Number(state.settings.retentionDays) || 1);
-  return Date.now() - retentionDays * 24 * 60 * 60 * 1000;
+function getDataRetentionCutoff(now = Date.now()) {
+  return now - DATA_RETENTION_MS;
 }
 
 function buildSessionSummary(session) {
@@ -29,24 +32,44 @@ function buildSessionSummary(session) {
   };
 }
 
-function pruneState(state) {
-  const cutoff = getRetentionCutoff(state);
+function pruneState(state, now = Date.now()) {
+  const retentionCutoff = getDataRetentionCutoff(now);
 
   state.sessionHistory = state.sessionHistory.filter((session) => {
     const targetTime = session.actualEndAt ?? session.endAt ?? session.startAt ?? 0;
-    return targetTime >= cutoff;
+    return targetTime >= retentionCutoff;
   });
 
-  state.blockAttempts = state.blockAttempts.filter((attempt) => attempt.attemptAt >= cutoff);
-  state.unlockAttempts = state.unlockAttempts.filter((attempt) => attempt.createdAt >= cutoff);
-  state.errorLogs = state.errorLogs.filter((entry) => entry.createdAt >= cutoff);
+  // Dashboard history is capped to the recent 7-day window and removed from storage beyond that.
+  state.blockAttempts = state.blockAttempts.filter((attempt) => attempt.attemptAt >= retentionCutoff);
+  state.unlockAttempts = state.unlockAttempts.filter((attempt) => attempt.createdAt >= retentionCutoff);
+  state.errorLogs = state.errorLogs.filter((entry) => entry.createdAt >= retentionCutoff);
+}
+
+function buildBlockedDomainSummary(blockAttempts) {
+  const domainCountMap = blockAttempts.reduce((accumulator, attempt) => {
+    accumulator[attempt.domain] = (accumulator[attempt.domain] ?? 0) + 1;
+    return accumulator;
+  }, {});
+
+  const items = Object.entries(domainCountMap)
+    .sort((left, right) => right[1] - left[1])
+    .slice(0, TOP_BLOCKED_DOMAIN_LIMIT)
+    .map(([domain, count]) => ({ domain, count }));
+
+  const topItemsCount = items.reduce((sum, item) => sum + item.count, 0);
+
+  return {
+    total: blockAttempts.length,
+    items,
+    otherCount: Math.max(0, blockAttempts.length - topItemsCount)
+  };
 }
 
 export async function pruneExpiredData() {
-  const state = await readState();
-  pruneState(state);
-  await replaceState(state);
-  return state;
+  return updateState((state) => {
+    pruneState(state);
+  });
 }
 
 export async function recordBlockAttempt({ tabId, url, source }) {
@@ -56,45 +79,47 @@ export async function recordBlockAttempt({ tabId, url, source }) {
     return null;
   }
 
-  const state = await readState();
-  const session = state.currentSession;
+  let attempt = null;
 
-  if (!session) {
-    return null;
-  }
+  await updateState((state) => {
+    const session = state.currentSession;
 
-  const attempt = {
-    id: createId("block"),
-    sessionId: session.id,
-    domain,
-    attemptAt: Date.now(),
-    source
-  };
+    if (!session) {
+      return state;
+    }
 
-  state.blockAttempts.unshift(attempt);
-  state[STORAGE_KEYS.TAB_BLOCK_STATE][String(tabId)] = {
-    domain,
-    url,
-    attemptAt: attempt.attemptAt,
-    source
-  };
+    attempt = {
+      id: createId("block"),
+      sessionId: session.id,
+      domain,
+      attemptAt: Date.now(),
+      source
+    };
 
-  pruneState(state);
-  await replaceState(state);
+    state.blockAttempts.unshift(attempt);
+    state[STORAGE_KEYS.TAB_BLOCK_STATE][String(tabId)] = {
+      domain,
+      url,
+      attemptAt: attempt.attemptAt,
+      source
+    };
+
+    pruneState(state);
+  });
+
   return attempt;
 }
 
 export async function recordUnlockAttempt(record) {
-  const state = await readState();
+  await updateState((state) => {
+    state.unlockAttempts.unshift({
+      id: createId("unlock"),
+      createdAt: Date.now(),
+      ...record
+    });
 
-  state.unlockAttempts.unshift({
-    id: createId("unlock"),
-    createdAt: Date.now(),
-    ...record
+    pruneState(state);
   });
-
-  pruneState(state);
-  await replaceState(state);
 }
 
 function getRangeStart(range) {
@@ -110,9 +135,9 @@ function getRangeStart(range) {
 }
 
 export async function buildDashboardData(range) {
-  const state = await readState();
-  pruneState(state);
-  await replaceState(state);
+  const state = await updateState((draftState) => {
+    pruneState(draftState);
+  });
 
   const rangeStart = getRangeStart(range);
   const allSessions = [...state.sessionHistory];
@@ -130,20 +155,10 @@ export async function buildDashboardData(range) {
   const filteredBlocks = state.blockAttempts.filter((attempt) => attempt.attemptAt >= rangeStart);
   const filteredUnlocks = state.unlockAttempts.filter((attempt) => attempt.createdAt >= rangeStart);
   const filteredErrorLogs = state.errorLogs.filter((entry) => entry.createdAt >= rangeStart);
+  const blockedDomainSummary = buildBlockedDomainSummary(state.blockAttempts);
 
   const totalFocusMinutes = filteredSessions.reduce((sum, session) => sum + session.durationMinutes, 0);
   const completedSessions = filteredSessions.filter((session) => session.status !== "active").length;
-  const blockedCount = filteredBlocks.length;
-
-  const topBlockedMap = filteredBlocks.reduce((accumulator, attempt) => {
-    accumulator[attempt.domain] = (accumulator[attempt.domain] ?? 0) + 1;
-    return accumulator;
-  }, {});
-
-  const topBlockedDomains = Object.entries(topBlockedMap)
-    .sort((left, right) => right[1] - left[1])
-    .slice(0, 5)
-    .map(([domain, count]) => ({ domain, count }));
 
   return {
     range,
@@ -151,11 +166,14 @@ export async function buildDashboardData(range) {
     cards: {
       totalFocusMinutes,
       completedSessions,
-      blockedCount,
+      blockedCount: filteredBlocks.length,
       unlockCount: filteredUnlocks.length,
       errorCount: filteredErrorLogs.length
     },
-    topBlockedDomains,
+    topBlockedDomains: blockedDomainSummary.items,
+    topBlockedTotal: blockedDomainSummary.total,
+    topBlockedOtherCount: blockedDomainSummary.otherCount,
+    topBlockedWindowDays: DATA_RETENTION_DAYS,
     sessions: filteredSessions.slice(0, 20),
     unlockAttempts: filteredUnlocks.slice(0, 20),
     errorLogs: filteredErrorLogs.slice(0, 30)

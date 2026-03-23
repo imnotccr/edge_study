@@ -61,10 +61,31 @@
 
       <section id="unlockChoiceCard" class="card stack hidden">
         <div class="kicker">Choice</div>
-        <h2>全部答对，可以选择解锁方式</h2>
+        <h2>题目已全部答对</h2>
+        <p class="meta-text">请选择本次应急解锁类型。应用后你可以直接返回相关页面。</p>
         <div class="inline-actions">
           <button id="temporaryAllowButton" class="button">临时放行 10 分钟</button>
           <button id="endSessionButton" class="button secondary">结束本次专注</button>
+        </div>
+      </section>
+
+      <section id="unlockSuccessCard" class="card stack hidden">
+        <div class="kicker">Applied</div>
+        <h2>应急解锁已生效</h2>
+        <p id="unlockSuccessDescription" class="meta-text">--</p>
+        <div class="metric-grid">
+          <div class="metric">
+            <span class="label">解锁类型</span>
+            <strong id="unlockResultTypeText">--</strong>
+          </div>
+          <div class="metric">
+            <span class="label">相关页面</span>
+            <strong id="unlockRelatedPageText">--</strong>
+          </div>
+        </div>
+        <div class="inline-actions">
+          <button id="returnToRelatedPageButton" class="button" type="button">回到相关页面</button>
+          <button id="goToDashboardButton" class="button secondary" type="button">查看数据汇总</button>
         </div>
       </section>
     </main>

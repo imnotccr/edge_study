@@ -1,8 +1,8 @@
-﻿import { CUSTOM_DURATION_CAP_OPTIONS, MESSAGE_TYPES, PRESET_SITES, THEMES } from "../shared/constants.js";
+import { CUSTOM_DURATION_CAP_OPTIONS, MESSAGE_TYPES, PRESET_SITES, THEMES } from "../shared/constants.js";
 import { normalizeDomainInput } from "../shared/domain.js";
 import { clearErrorLogs, logErrorEvent } from "../shared/error-log.js";
 import { AppError, ERROR_CODES, buildErrorResponse } from "../shared/errors.js";
-import { ensureStateInitialized, readState, replaceState } from "../shared/storage.js";
+import { ensureStateInitialized, readState, updateState } from "../shared/storage.js";
 import { buildDashboardData, pruneExpiredData, recordBlockAttempt } from "./stats-manager.js";
 import {
   forceDebugExit,
@@ -28,12 +28,6 @@ function assertUniqueDomains(entries) {
 }
 
 async function saveOptions({ whitelistEntries, settings }) {
-  const state = await readState();
-
-  if (state.currentSession) {
-    throw new AppError(ERROR_CODES.FOCUS_CONFIGURATION_LOCKED, "专注进行中不得修改白名单或配置。");
-  }
-
   const normalizedWhitelist = whitelistEntries.map((entry) => {
     const normalizedDomain = normalizeDomainInput(entry.domain ?? "");
 
@@ -64,33 +58,32 @@ async function saveOptions({ whitelistEntries, settings }) {
     throw new AppError(ERROR_CODES.SETTINGS_THEME_INVALID, "主题配置无效。");
   }
 
-  const retentionDays = Number(settings.retentionDays);
   const cooldownMinutes = Number(settings.unlockCooldownMinutes);
-
-  if (!Number.isInteger(retentionDays) || retentionDays <= 0) {
-    throw new AppError(ERROR_CODES.SETTINGS_RETENTION_INVALID, "统计保留天数必须是大于 0 的整数。");
-  }
 
   if (settings.unlockCooldownEnabled && (!Number.isInteger(cooldownMinutes) || cooldownMinutes <= 0)) {
     throw new AppError(ERROR_CODES.SETTINGS_COOLDOWN_INVALID, "冷却时间必须是大于 0 的整数分钟。");
   }
 
-  state.whitelistEntries = normalizedWhitelist;
-  state.settings = {
-    ...state.settings,
-    theme: settings.theme,
-    customDurationCapOption: settings.customDurationCapOption,
-    retentionDays,
-    unlockCooldownEnabled: Boolean(settings.unlockCooldownEnabled),
-    unlockCooldownMinutes: Number.isInteger(cooldownMinutes) && cooldownMinutes > 0 ? cooldownMinutes : 5
-  };
+  const nextState = await updateState((state) => {
+    if (state.currentSession) {
+      throw new AppError(ERROR_CODES.FOCUS_CONFIGURATION_LOCKED, "专注进行中不得修改白名单或配置。");
+    }
 
-  await replaceState(state);
+    state.whitelistEntries = normalizedWhitelist;
+    state.settings = {
+      ...state.settings,
+      theme: settings.theme,
+      customDurationCapOption: settings.customDurationCapOption,
+      unlockCooldownEnabled: Boolean(settings.unlockCooldownEnabled),
+      unlockCooldownMinutes: Number.isInteger(cooldownMinutes) && cooldownMinutes > 0 ? cooldownMinutes : 5
+    };
+  });
+
   await pruneExpiredData();
 
   return {
-    whitelistEntries: state.whitelistEntries,
-    settings: state.settings
+    whitelistEntries: nextState.whitelistEntries,
+    settings: nextState.settings
   };
 }
 

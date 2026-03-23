@@ -16,11 +16,22 @@ const elements = {
 let selectedDuration = null;
 let durationCap = getDurationCapOption("720");
 let isLocked = false;
+const defaultCustomPlaceholder = "输入分钟数";
 
 function showBanner(text, type = "error") {
   elements.banner.textContent = text;
   elements.banner.className = `notice ${type}`;
   elements.banner.classList.remove("hidden");
+}
+
+function syncCustomDurationState() {
+  const quickDurationSelected = selectedDuration !== null;
+  const shouldDisableCustomInput = isLocked || quickDurationSelected;
+
+  elements.customDurationInput.disabled = shouldDisableCustomInput;
+  elements.customDurationInput.placeholder = quickDurationSelected
+    ? "已选择快捷时长，再点一次可改用自定义"
+    : defaultCustomPlaceholder;
 }
 
 function renderDurationButtons() {
@@ -34,8 +45,13 @@ function renderDurationButtons() {
     button.dataset.minutes = String(minutes);
     button.disabled = isLocked;
     button.addEventListener("click", () => {
-      selectedDuration = minutes;
-      elements.customDurationInput.value = "";
+      selectedDuration = selectedDuration === minutes ? null : minutes;
+
+      if (selectedDuration !== null) {
+        elements.customDurationInput.value = "";
+      }
+
+      syncCustomDurationState();
       renderDurationButtons();
     });
     elements.quickDurationButtons.appendChild(button);
@@ -58,16 +74,17 @@ async function loadState() {
   elements.capHint.textContent = `当前自定义时长上限：${durationCap.maxMinutes} 分钟。`;
   elements.customDurationInput.max = String(durationCap.maxMinutes);
   renderDurationButtons();
+  syncCustomDurationState();
 
   if (isLocked) {
     elements.purposeInput.disabled = true;
-    elements.customDurationInput.disabled = true;
     showBanner(formatErrorLabel({ code: ERROR_CODES.FOCUS_ACTIVE_SESSION_EXISTS, message: "当前已有进行中的专注会话，暂时不能再次开始。" }), "error");
   }
 }
 
 elements.customDurationInput.addEventListener("input", () => {
   selectedDuration = null;
+  syncCustomDurationState();
   renderDurationButtons();
 });
 

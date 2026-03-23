@@ -1,0 +1,237 @@
+﻿:root {
+  --popup-width: 360px;
+  --popup-height: 412px;
+  /* Adjust this value to scale the top-left brand badge and its rounded edge together. */
+  --brand-mark-scale: 1;
+  --brand-mark-size: calc(56px * var(--brand-mark-scale));
+  --brand-mark-radius: calc(18px * var(--brand-mark-scale));
+  --brand-mark-gap: calc(12px * var(--brand-mark-scale));
+  --brand-glyph-size: calc(24px * var(--brand-mark-scale));
+  --brand-label-size: calc(16px * var(--brand-mark-scale));
+  --brand-meta-size: calc(11px * var(--brand-mark-scale));
+}
+
+.popup-root,
+.popup-root body {
+  width: var(--popup-width) !important;
+  min-width: var(--popup-width) !important;
+  max-width: var(--popup-width) !important;
+  height: var(--popup-height) !important;
+  min-height: var(--popup-height) !important;
+  max-height: var(--popup-height) !important;
+  margin: 0;
+  overflow: hidden !important;
+}
+
+.popup-root {
+  scrollbar-gutter: auto;
+}
+
+.popup-root body {
+  display: block;
+}
+
+.popup-body {
+  min-height: 0;
+  overflow: hidden !important;
+}
+
+.popup-body::before {
+  position: absolute;
+}
+
+.popup-shell {
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+  max-height: 100%;
+  overflow-x: hidden;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: 12px 10px 14px;
+}
+
+.popup-shell::-webkit-scrollbar {
+  width: 8px;
+}
+
+.popup-shell::-webkit-scrollbar-button {
+  display: none;
+  width: 0;
+  height: 0;
+}
+
+.popup-shell .hero {
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.popup-shell .brand-banner {
+  display: flex;
+  align-items: center;
+  gap: var(--brand-mark-gap);
+  margin-bottom: 12px;
+}
+
+.popup-shell .brand-banner .brand-mark {
+  position: relative;
+  flex: 0 0 auto;
+  width: var(--brand-mark-size);
+  height: var(--brand-mark-size);
+  border-radius: var(--brand-mark-radius);
+  border: 1px solid color-mix(in srgb, var(--accent) 22%, var(--border));
+  background:
+    linear-gradient(160deg, rgba(255, 92, 87, 0.22), rgba(255, 92, 87, 0.06) 52%, rgba(255, 255, 255, 0.03)),
+    color-mix(in srgb, var(--panel) 88%, #111 0%);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.08),
+    0 14px 30px rgba(8, 10, 16, 0.34);
+  overflow: hidden;
+  isolation: isolate;
+}
+
+.popup-shell .brand-banner .brand-mark::before {
+  content: "";
+  position: absolute;
+  top: calc(var(--brand-mark-size) * -0.18);
+  left: calc(var(--brand-mark-size) * -0.14);
+  width: calc(var(--brand-mark-size) * 0.68);
+  height: calc(var(--brand-mark-size) * 0.68);
+  border-radius: calc(var(--brand-mark-radius) * 0.9);
+  background: radial-gradient(circle, rgba(255, 123, 116, 0.52), rgba(255, 92, 87, 0) 72%);
+}
+
+.popup-shell .brand-banner .brand-mark::after {
+  content: "";
+  position: absolute;
+  right: calc(var(--brand-mark-size) * -0.18);
+  bottom: calc(var(--brand-mark-size) * -0.22);
+  width: calc(var(--brand-mark-size) * 0.61);
+  height: calc(var(--brand-mark-size) * 0.61);
+  border-radius: 999px;
+  background: radial-gradient(circle, rgba(255, 209, 102, 0.34), rgba(255, 209, 102, 0) 72%);
+}
+
+.popup-shell .brand-mark-glyph {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  width: 100%;
+  height: 100%;
+  place-items: center;
+  font-size: var(--brand-glyph-size);
+  font-weight: 800;
+  color: #fff7f1;
+  text-shadow: 0 4px 18px rgba(255, 92, 87, 0.3);
+}
+
+.popup-shell .brand-copy {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+
+.popup-shell .brand-label {
+  color: var(--text);
+  font-size: var(--brand-label-size);
+  font-weight: 700;
+  letter-spacing: 0.02em;
+}
+
+.popup-shell .brand-meta {
+  color: color-mix(in srgb, var(--muted) 84%, #ffffff 8%);
+  font-size: var(--brand-meta-size);
+  letter-spacing: 0.14em;
+}
+
+.popup-shell .kicker {
+  margin-bottom: 8px;
+  font-size: 12px;
+  letter-spacing: 0.08em;
+}
+
+.popup-shell h1 {
+  font-size: 22px;
+}
+
+.popup-shell .card {
+  padding: 14px;
+  border-radius: calc(var(--brand-mark-radius) * 0.9);
+}
+
+.popup-shell .status-badge {
+  padding: 6px 10px;
+  font-size: 12px;
+}
+
+.popup-shell .metric-grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.popup-shell .metric {
+  padding: 10px;
+}
+
+.popup-shell .metric .label {
+  margin-bottom: 4px;
+  font-size: 12px;
+}
+
+.popup-shell .metric strong {
+  font-size: 17px;
+}
+
+.popup-shell .button-grid {
+  gap: 8px;
+}
+
+.popup-shell .button,
+.popup-shell button.button,
+.popup-shell a.button {
+  min-height: 40px;
+  padding: 0 10px;
+  font-size: 14px;
+}
+
+.popup-shell .stack > * + * {
+  margin-top: 12px;
+}
+
+.debug-strip {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--brand-mark-gap);
+  padding: 12px 14px;
+  border-radius: calc(var(--brand-mark-radius) * 0.9);
+  border: 1px dashed var(--border);
+  background: var(--panel-soft);
+}
+
+.debug-strip .kicker {
+  margin-bottom: 4px;
+}
+
+.debug-strip .meta-text {
+  font-size: 12px;
+  line-height: 1.4;
+}
+
+.debug-strip .button {
+  flex: 0 0 auto;
+  min-width: 96px;
+}
+
+#popupHint,
+#popupMessage {
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+#popupMessage {
+  min-height: 20px;
+}
+
+

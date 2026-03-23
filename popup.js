@@ -59,7 +59,7 @@ function renderAppState(nextState) {
   const temporaryAllowActive = hasSession && (session.allowAllUntil ?? 0) > Date.now();
 
   elements.whitelistCountText.textContent = String(nextState.whitelistCount);
-  elements.unlockButton.disabled = !hasSession;
+  elements.unlockButton.disabled = !hasSession || temporaryAllowActive;
   elements.startButton.disabled = hasSession;
   elements.debugCard.classList.toggle(
     "hidden",
@@ -77,7 +77,7 @@ function renderAppState(nextState) {
   }
 
   elements.popupHint.textContent = temporaryAllowActive
-    ? "当前处于临时放行阶段，到时会自动恢复拦截。"
+    ? "当前处于临时放行阶段，倒计时结束前不可再次应急解锁。"
     : "专注进行中，非白名单网站会被拦截。";
   elements.statusBadge.textContent = temporaryAllowActive ? "临时放行中" : "专注中";
   elements.statusBadge.className = temporaryAllowActive ? "status-badge warning" : "status-badge active";
@@ -112,7 +112,7 @@ elements.startButton.addEventListener("click", async () => {
 });
 
 elements.unlockButton.addEventListener("click", async () => {
-  if (!appState?.currentSession) {
+  if (!appState?.currentSession || ((appState.currentSession.allowAllUntil ?? 0) > Date.now())) {
     return;
   }
 

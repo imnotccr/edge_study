@@ -5,3 +5,7 @@ Thumbs.db
 *.log
 *.tmp
 *.zip
+
+# Local design drafts and preview exports
+assets/test-*.png
+assets/icons/*-preview.png

@@ -1,4 +1,4 @@
-﻿<!doctype html>
+<!doctype html>
 <html lang="zh-CN">
   <head>
     <meta charset="UTF-8" />
@@ -6,13 +6,13 @@
     <title>数据汇总</title>
     <link rel="stylesheet" href="../assets/styles/common.css" />
   </head>
-  <body>
+  <body class="dashboard-page">
     <main class="page-shell stack">
       <section class="hero">
         <div>
           <div class="kicker">Dashboard</div>
           <h1>专注数据汇总</h1>
-          <p>这里展示当前保留期内的会话、拦截、应急解锁和开发阶段错误日志，帮助你回看自己的专注模式。</p>
+          <p>这里展示最近 7 天内的会话、拦截、应急解锁和开发阶段错误日志，帮助你回看自己的专注模式。</p>
         </div>
       </section>
 
@@ -41,8 +41,13 @@
       </section>
 
       <section class="card stack">
-        <h2>高频被拦截域名</h2>
-        <div id="topBlockedList" class="list"></div>
+        <div class="section-heading">
+          <div>
+            <h2>最近 7 天被拦截域名分布</h2>
+            <p class="meta-text">仅保留最近 7 天的拦截记录，超过一周会自动清理。</p>
+          </div>
+        </div>
+        <div id="topBlockedList" class="blocked-chart-shell"></div>
       </section>
 
       <section class="card stack">

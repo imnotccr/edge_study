@@ -1,6 +1,5 @@
-﻿import { MAX_ERROR_LOGS } from "./constants.js";
+import { MAX_ERROR_LOGS, STORAGE_KEYS } from "./constants.js";
 import { normalizeError } from "./errors.js";
-import { readState, replaceState } from "./storage.js";
 
 function createId() {
   return `error-${crypto.randomUUID()}`;
@@ -17,9 +16,16 @@ function mergeDetails(normalizedDetails, extraDetails) {
   };
 }
 
+async function readErrorLogs() {
+  const result = await chrome.storage.local.get({
+    [STORAGE_KEYS.ERROR_LOGS]: []
+  });
+
+  return Array.isArray(result[STORAGE_KEYS.ERROR_LOGS]) ? result[STORAGE_KEYS.ERROR_LOGS] : [];
+}
+
 export async function logErrorEvent({ error, source = "unknown", scope = "unknown", details = null, level = "error" }) {
   try {
-    const state = await readState();
     const normalized = normalizeError(error);
     const entry = {
       id: createId(),
@@ -31,10 +37,13 @@ export async function logErrorEvent({ error, source = "unknown", scope = "unknow
       details: mergeDetails(normalized.details, details),
       createdAt: Date.now()
     };
+    const errorLogs = await readErrorLogs();
 
-    state.errorLogs.unshift(entry);
-    state.errorLogs = state.errorLogs.slice(0, MAX_ERROR_LOGS);
-    await replaceState(state);
+    errorLogs.unshift(entry);
+    await chrome.storage.local.set({
+      [STORAGE_KEYS.ERROR_LOGS]: errorLogs.slice(0, MAX_ERROR_LOGS)
+    });
+
     return entry;
   } catch (loggingError) {
     console.warn("error log write failed", loggingError);
@@ -43,9 +52,10 @@ export async function logErrorEvent({ error, source = "unknown", scope = "unknow
 }
 
 export async function clearErrorLogs() {
-  const state = await readState();
-  state.errorLogs = [];
-  await replaceState(state);
+  await chrome.storage.local.set({
+    [STORAGE_KEYS.ERROR_LOGS]: []
+  });
+
   return { cleared: true };
 }
 

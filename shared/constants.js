@@ -1,4 +1,4 @@
-﻿export const DEVELOPMENT_BUILD = true;
+export const DEVELOPMENT_BUILD = true;
 
 export const STORAGE_KEYS = {
   SETTINGS: "settings",
@@ -46,7 +46,6 @@ export const CUSTOM_DURATION_CAP_OPTIONS = [
 
 export const TEMP_ALLOW_MINUTES = 10;
 export const UNLOCK_QUESTION_COUNT = 5;
-export const DEFAULT_RETENTION_DAYS = 90;
 export const DEFAULT_UNLOCK_COOLDOWN_MINUTES = 5;
 export const MAX_ERROR_LOGS = 200;
 
@@ -60,7 +59,6 @@ export const PRESET_SITES = [
 export const DEFAULT_SETTINGS = {
   theme: "dark",
   customDurationCapOption: CUSTOM_DURATION_CAP_OPTIONS[2].value,
-  retentionDays: DEFAULT_RETENTION_DAYS,
   unlockCooldownEnabled: false,
   unlockCooldownMinutes: DEFAULT_UNLOCK_COOLDOWN_MINUTES,
   devToolsEnabled: DEVELOPMENT_BUILD
@@ -71,7 +69,8 @@ export const PAGE_PATHS = {
   OPTIONS: "pages/options.html",
   BLOCK: "pages/block.html",
   DASHBOARD: "pages/dashboard.html",
-  UNLOCK: "pages/unlock.html"
+  UNLOCK: "pages/unlock.html",
+  TEMP_ALLOW_REMINDER: "pages/temp-allow-reminder.html"
 };
 
 export const THEMES = [
@@ -88,3 +87,4 @@ export const DASHBOARD_RANGES = [
 export function getDurationCapOption(value) {
   return CUSTOM_DURATION_CAP_OPTIONS.find((option) => option.value === value) ?? CUSTOM_DURATION_CAP_OPTIONS[0];
 }
+

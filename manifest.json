@@ -1,11 +1,22 @@
 ﻿{
   "manifest_version": 3,
   "name": "学习专注护栏",
-  "description": "学习时仅允许访问白名单网站的专注扩展。",
+  "description": "把浏览器切换为学习白名单模式，自动拦截分心网站。",
   "version": "0.1.0",
   "action": {
     "default_title": "学习专注护栏",
-    "default_popup": "popup.html"
+    "default_popup": "popup.html",
+    "default_icon": {
+      "16": "assets/icons/icon16.png",
+      "32": "assets/icons/icon32.png",
+      "48": "assets/icons/icon48.png"
+    }
+  },
+  "icons": {
+    "16": "assets/icons/icon16.png",
+    "32": "assets/icons/icon32.png",
+    "48": "assets/icons/icon48.png",
+    "128": "assets/icons/icon128.png"
   },
   "background": {
     "service_worker": "background/service-worker.js",
@@ -18,7 +29,8 @@
     "declarativeNetRequestWithHostAccess",
     "alarms",
     "tabs",
-    "webNavigation"
+    "webNavigation",
+    "windows"
   ],
   "host_permissions": [
     "<all_urls>"
