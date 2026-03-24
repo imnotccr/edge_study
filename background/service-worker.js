@@ -1,5 +1,5 @@
-import { CUSTOM_DURATION_CAP_OPTIONS, MESSAGE_TYPES, PRESET_SITES, THEMES } from "../shared/constants.js";
-import { normalizeDomainInput } from "../shared/domain.js";
+﻿import { CUSTOM_DURATION_CAP_OPTIONS, MESSAGE_TYPES, PRESET_SITES, THEMES } from "../shared/constants.js";
+import { extractDomainFromUrl, normalizeDomainInput } from "../shared/domain.js";
 import { clearErrorLogs, logErrorEvent } from "../shared/error-log.js";
 import { AppError, ERROR_CODES, buildErrorResponse } from "../shared/errors.js";
 import { ensureStateInitialized, readState, updateState } from "../shared/storage.js";
@@ -66,7 +66,7 @@ async function saveOptions({ whitelistEntries, settings }) {
 
   const nextState = await updateState((state) => {
     if (state.currentSession) {
-      throw new AppError(ERROR_CODES.FOCUS_CONFIGURATION_LOCKED, "专注进行中不得修改白名单或配置。");
+      throw new AppError(ERROR_CODES.FOCUS_CONFIGURATION_LOCKED, "专注进行中时不能修改白名单或设置。");
     }
 
     state.whitelistEntries = normalizedWhitelist;
@@ -124,7 +124,7 @@ async function handleMessage(message, sender) {
     case MESSAGE_TYPES.FORCE_DEBUG_EXIT:
       return forceDebugExit();
     default:
-      throw new AppError(ERROR_CODES.MESSAGE_UNKNOWN_TYPE, "未识别的消息类型。", {
+      throw new AppError(ERROR_CODES.MESSAGE_UNKNOWN_TYPE, "无法识别的消息类型。", {
         type: message?.type ?? null
       });
   }
@@ -206,7 +206,8 @@ chrome.webNavigation.onBeforeNavigate.addListener(async (details) => {
       scope: "webNavigation.onBeforeNavigate",
       details: {
         tabId: details.tabId,
-        url: details.url
+        frameId: details.frameId,
+        domain: extractDomainFromUrl(details.url)
       }
     });
   }

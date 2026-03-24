@@ -1,11 +1,14 @@
-import { STORAGE_KEYS } from "../shared/constants.js";
-import { extractDomainFromUrl } from "../shared/domain.js";
+import { STORAGE_KEYS, UNLOCK_QUESTION_HISTORY_RETENTION_DAYS } from "../shared/constants.js";
+import { extractDomainFromUrl, extractOriginFromUrl } from "../shared/domain.js";
+import { setTabRestoreTarget } from "../shared/session-secrets.js";
 import { getStartOfToday, getStartOfWeek } from "../shared/time.js";
 import { updateState } from "../shared/storage.js";
 
 const DATA_RETENTION_DAYS = 7;
 const DATA_RETENTION_MS = DATA_RETENTION_DAYS * 24 * 60 * 60 * 1000;
+const UNLOCK_QUESTION_HISTORY_RETENTION_MS = UNLOCK_QUESTION_HISTORY_RETENTION_DAYS * 24 * 60 * 60 * 1000;
 const TOP_BLOCKED_DOMAIN_LIMIT = 5;
+const RECENT_RECORD_LIMIT = 3;
 
 function createId(prefix) {
   return `${prefix}-${crypto.randomUUID()}`;
@@ -13,6 +16,10 @@ function createId(prefix) {
 
 function getDataRetentionCutoff(now = Date.now()) {
   return now - DATA_RETENTION_MS;
+}
+
+function getUnlockQuestionHistoryCutoff(now = Date.now()) {
+  return now - UNLOCK_QUESTION_HISTORY_RETENTION_MS;
 }
 
 function buildSessionSummary(session) {
@@ -34,15 +41,18 @@ function buildSessionSummary(session) {
 
 function pruneState(state, now = Date.now()) {
   const retentionCutoff = getDataRetentionCutoff(now);
+  const unlockQuestionHistoryCutoff = getUnlockQuestionHistoryCutoff(now);
 
   state.sessionHistory = state.sessionHistory.filter((session) => {
     const targetTime = session.actualEndAt ?? session.endAt ?? session.startAt ?? 0;
     return targetTime >= retentionCutoff;
-  });
+  }).slice(0, RECENT_RECORD_LIMIT);
 
-  // Dashboard history is capped to the recent 7-day window and removed from storage beyond that.
   state.blockAttempts = state.blockAttempts.filter((attempt) => attempt.attemptAt >= retentionCutoff);
-  state.unlockAttempts = state.unlockAttempts.filter((attempt) => attempt.createdAt >= retentionCutoff);
+  state.unlockAttempts = state.unlockAttempts.filter((attempt) => attempt.createdAt >= retentionCutoff).slice(0, RECENT_RECORD_LIMIT);
+  state[STORAGE_KEYS.UNLOCK_QUESTION_HISTORY] = state[STORAGE_KEYS.UNLOCK_QUESTION_HISTORY].filter(
+    (entry) => entry.createdAt >= unlockQuestionHistoryCutoff
+  );
   state.errorLogs = state.errorLogs.filter((entry) => entry.createdAt >= retentionCutoff);
 }
 
@@ -74,6 +84,7 @@ export async function pruneExpiredData() {
 
 export async function recordBlockAttempt({ tabId, url, source }) {
   const domain = extractDomainFromUrl(url);
+  const origin = extractOriginFromUrl(url);
 
   if (!domain) {
     return null;
@@ -99,13 +110,17 @@ export async function recordBlockAttempt({ tabId, url, source }) {
     state.blockAttempts.unshift(attempt);
     state[STORAGE_KEYS.TAB_BLOCK_STATE][String(tabId)] = {
       domain,
-      url,
+      origin,
       attemptAt: attempt.attemptAt,
       source
     };
 
     pruneState(state);
   });
+
+  if (attempt && Number.isInteger(tabId)) {
+    await setTabRestoreTarget(tabId, url);
+  }
 
   return attempt;
 }
@@ -140,22 +155,23 @@ export async function buildDashboardData(range) {
   });
 
   const rangeStart = getRangeStart(range);
-  const allSessions = [...state.sessionHistory];
-
-  if (state.currentSession) {
-    allSessions.unshift(
-      buildSessionSummary({
+  const currentSessionSummary = state.currentSession
+    ? buildSessionSummary({
         ...state.currentSession,
         actualEndAt: Date.now()
       })
-    );
-  }
-
-  const filteredSessions = allSessions.filter((session) => session.startAt >= rangeStart);
+    : null;
+  const filteredArchivedSessions = state.sessionHistory.filter((session) => session.startAt >= rangeStart);
+  const filteredSessions = currentSessionSummary && currentSessionSummary.startAt >= rangeStart
+    ? [currentSessionSummary, ...filteredArchivedSessions]
+    : filteredArchivedSessions;
+  const displayedSessions = currentSessionSummary && currentSessionSummary.startAt >= rangeStart
+    ? [currentSessionSummary, ...filteredArchivedSessions.slice(0, RECENT_RECORD_LIMIT)]
+    : filteredArchivedSessions.slice(0, RECENT_RECORD_LIMIT);
   const filteredBlocks = state.blockAttempts.filter((attempt) => attempt.attemptAt >= rangeStart);
   const filteredUnlocks = state.unlockAttempts.filter((attempt) => attempt.createdAt >= rangeStart);
   const filteredErrorLogs = state.errorLogs.filter((entry) => entry.createdAt >= rangeStart);
-  const blockedDomainSummary = buildBlockedDomainSummary(state.blockAttempts);
+  const blockedDomainSummary = buildBlockedDomainSummary(filteredBlocks);
 
   const totalFocusMinutes = filteredSessions.reduce((sum, session) => sum + session.durationMinutes, 0);
   const completedSessions = filteredSessions.filter((session) => session.status !== "active").length;
@@ -174,8 +190,8 @@ export async function buildDashboardData(range) {
     topBlockedTotal: blockedDomainSummary.total,
     topBlockedOtherCount: blockedDomainSummary.otherCount,
     topBlockedWindowDays: DATA_RETENTION_DAYS,
-    sessions: filteredSessions.slice(0, 20),
-    unlockAttempts: filteredUnlocks.slice(0, 20),
+    sessions: displayedSessions,
+    unlockAttempts: filteredUnlocks.slice(0, RECENT_RECORD_LIMIT),
     errorLogs: filteredErrorLogs.slice(0, 30)
   };
 }

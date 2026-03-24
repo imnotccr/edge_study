@@ -1,4 +1,4 @@
-import { DASHBOARD_RANGES, MESSAGE_TYPES } from "../shared/constants.js";
+﻿import { DASHBOARD_RANGES, MESSAGE_TYPES, UNLOCK_QUESTION_COUNT } from "../shared/constants.js";
 import { installGlobalErrorHandlers } from "../shared/error-log.js";
 import { formatErrorLabel } from "../shared/errors.js";
 import { sendRuntimeMessage } from "../shared/api.js";
@@ -6,7 +6,7 @@ import { initTheme } from "../shared/theme.js";
 import { formatDateTime, formatMinutesLabel } from "../shared/time.js";
 
 const PIE_COLORS = ["#34c98a", "#61d9a6", "#8de8c0", "#b8f2d8", "#ffd166", "#8ecdf8"];
-const DOT_SEPARATOR = " · ";
+const DOT_SEPARATOR = " 路 ";
 
 const elements = {
   notice: document.querySelector("#dashboardNotice"),
@@ -110,7 +110,7 @@ function renderTopBlockedDomains(items, totalCount, otherCount, windowDays) {
   elements.topBlockedList.replaceChildren();
 
   if (!totalCount) {
-    elements.topBlockedList.appendChild(createEmptyState(`最近 ${windowDays} 天还没有被拦截记录。`));
+    elements.topBlockedList.appendChild(createEmptyState(`最近 ${windowDays} 天还没有拦截记录。`));
     return;
   }
 
@@ -148,7 +148,7 @@ function renderTopBlockedDomains(items, totalCount, otherCount, windowDays) {
   const note = createTextElement(
     "p",
     "blocked-chart-note",
-    `占比按最近 ${windowDays} 天所有拦截记录计算。`
+    `占比按最近 ${windowDays} 天内的全部拦截记录计算。`
   );
   visual.append(chart, note);
 
@@ -210,10 +210,20 @@ function renderUnlocks(items) {
   };
 
   for (const item of items) {
+    const metaParts = [formatDateTime(item.createdAt)];
+
+    if (Number.isInteger(item.score)) {
+      metaParts.unshift(`得分 ${item.score}/${UNLOCK_QUESTION_COUNT}`);
+    }
+
+    if (item.result === "temporary_allow" && Number.isInteger(item.allowMinutes)) {
+      metaParts.unshift(`放行 ${item.allowMinutes} 分钟`);
+    }
+
     elements.unlockHistoryList.appendChild(
       createListItem(
         labels[item.result] ?? item.result,
-        `${item.reason}${DOT_SEPARATOR}${formatDateTime(item.createdAt)}`
+        metaParts.join(DOT_SEPARATOR)
       )
     );
   }

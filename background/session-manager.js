@@ -1,4 +1,4 @@
-import {
+﻿import {
   ALARM_NAMES,
   DEVELOPMENT_BUILD,
   PAGE_PATHS,
@@ -8,6 +8,7 @@ import {
 } from "../shared/constants.js";
 import { isUrlAllowed } from "../shared/domain.js";
 import { AppError, ERROR_CODES } from "../shared/errors.js";
+import { clearTabRestoreTargets, clearUnlockChallenge, getTabRestoreTarget } from "../shared/session-secrets.js";
 import { getRemainingMs } from "../shared/time.js";
 import { readState, updateState } from "../shared/storage.js";
 import { applyFocusRules, clearFocusRules, scanAndBlockExistingTabs } from "./rules-manager.js";
@@ -29,8 +30,8 @@ function createDefaultUnlockState() {
   return {
     failedCount: 0,
     cooldownUntil: null,
-    pendingChallenge: null,
-    pendingResult: null
+    pendingChallengeId: null,
+    pendingResultAvailable: false
   };
 }
 
@@ -41,7 +42,16 @@ function ensureUnlockState(session) {
 
   session.unlockState = {
     ...createDefaultUnlockState(),
-    ...(session.unlockState ?? {})
+    failedCount: Number.isInteger(session.unlockState?.failedCount) && session.unlockState.failedCount > 0
+      ? session.unlockState.failedCount
+      : 0,
+    cooldownUntil: typeof session.unlockState?.cooldownUntil === "number"
+      ? session.unlockState.cooldownUntil
+      : null,
+    pendingChallengeId: typeof session.unlockState?.pendingChallengeId === "string"
+      ? session.unlockState.pendingChallengeId
+      : null,
+    pendingResultAvailable: Boolean(session.unlockState?.pendingResultAvailable)
   };
 
   return session.unlockState;
@@ -138,7 +148,7 @@ async function ensureTempAllowReminderWindow() {
         ...position
       });
     } catch {
-      // If the window cannot be repositioned, keep the existing one as-is.
+      // Ignore reposition failures and keep the existing reminder window.
     }
 
     return existingWindow.id;
@@ -207,11 +217,11 @@ function isRestorableBlockedUrl(url) {
 
 async function restoreBlockedTabs(tabBlockState) {
   const blockPageUrl = chrome.runtime.getURL(PAGE_PATHS.BLOCK);
-  const restoredTabIds = [];
 
   for (const [tabId, blockedInfo] of Object.entries(tabBlockState ?? {})) {
     const numericTabId = Number(tabId);
-    const originalUrl = blockedInfo?.url ?? null;
+    const restoreUrl = Number.isInteger(numericTabId) ? await getTabRestoreTarget(numericTabId) : null;
+    const originalUrl = restoreUrl ?? blockedInfo?.origin ?? null;
 
     if (!Number.isInteger(numericTabId) || !isRestorableBlockedUrl(originalUrl)) {
       continue;
@@ -227,25 +237,10 @@ async function restoreBlockedTabs(tabBlockState) {
       await chrome.tabs.update(numericTabId, {
         url: originalUrl
       });
-      restoredTabIds.push(String(numericTabId));
     } catch {
       // The tab may have been closed or reused; skip restoring it.
     }
   }
-
-  return restoredTabIds;
-}
-
-async function clearRestoredTabBlockState(restoredTabIds) {
-  if (!restoredTabIds.length) {
-    return;
-  }
-
-  await updateState((state) => {
-    for (const tabId of restoredTabIds) {
-      delete state.tabBlockState[String(tabId)];
-    }
-  });
 }
 
 function validateStartInput(purpose, durationMinutes, settings) {
@@ -363,6 +358,7 @@ export async function endSession(endReason = SESSION_STATUS.COMPLETED) {
     blockedTabsToRestore = { ...state.tabBlockState };
     state.sessionHistory.unshift(buildSessionHistoryEntry(archivedSession));
     state.currentSession = null;
+    state.tabBlockState = {};
   });
 
   if (!archivedSession) {
@@ -371,9 +367,10 @@ export async function endSession(endReason = SESSION_STATUS.COMPLETED) {
 
   await clearFocusRules();
   await syncAlarms(null);
-  const restoredTabIds = await restoreBlockedTabs(blockedTabsToRestore);
+  await restoreBlockedTabs(blockedTabsToRestore);
   await closeTempAllowReminderWindow();
-  await clearRestoredTabBlockState(restoredTabIds);
+  await clearTabRestoreTargets(Object.keys(blockedTabsToRestore));
+  await clearUnlockChallenge(archivedSession.id);
 
   return archivedSession;
 }
@@ -394,18 +391,19 @@ export async function applyTemporaryAllow({ clearPendingResult = false } = {}) {
     draftState.currentSession.allowAllUntil = allowUntil;
 
     if (clearPendingResult) {
-      ensureUnlockState(draftState.currentSession).pendingResult = null;
+      ensureUnlockState(draftState.currentSession).pendingResultAvailable = false;
     }
 
     draftState.currentSession.updatedAt = now;
+    draftState.tabBlockState = {};
     sessionView = buildSessionView(draftState.currentSession);
   });
 
   await clearFocusRules();
   await syncAlarms(state.currentSession);
-  const restoredTabIds = await restoreBlockedTabs(blockedTabsToRestore);
+  await restoreBlockedTabs(blockedTabsToRestore);
   await ensureTempAllowReminderWindow();
-  await clearRestoredTabBlockState(restoredTabIds);
+  await clearTabRestoreTargets(Object.keys(blockedTabsToRestore));
 
   return sessionView ?? buildSessionView(state.currentSession);
 }
@@ -527,10 +525,16 @@ export async function getBlockContext(tabId) {
   const state = await readState();
   const session = buildSessionView(state.currentSession);
   const blockedInfo = state.tabBlockState[String(tabId)] ?? null;
+  const returnUrl = Number.isInteger(tabId) ? await getTabRestoreTarget(tabId) : null;
 
   return {
     hasActiveSession: Boolean(session),
-    blockedInfo,
+    blockedInfo: blockedInfo
+      ? {
+          ...blockedInfo,
+          returnUrl: returnUrl ?? blockedInfo.origin ?? null
+        }
+      : null,
     currentSession: session
   };
 }

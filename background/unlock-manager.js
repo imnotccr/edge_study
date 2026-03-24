@@ -1,22 +1,42 @@
-import { SESSION_STATUS, TEMP_ALLOW_MINUTES, UNLOCK_QUESTION_COUNT } from "../shared/constants.js";
+import {
+  SESSION_STATUS,
+  STORAGE_KEYS,
+  TEMP_ALLOW_MINUTES,
+  UNLOCK_QUESTION_COUNT,
+  UNLOCK_QUESTION_HISTORY_RETENTION_DAYS
+} from "../shared/constants.js";
 import { AppError, ERROR_CODES } from "../shared/errors.js";
+import { clearUnlockChallenge, readUnlockChallenge, writeUnlockChallenge } from "../shared/session-secrets.js";
 import { readState, updateState } from "../shared/storage.js";
 import { recordUnlockAttempt } from "./stats-manager.js";
 import { applyTemporaryAllow, endSession, isSessionActive, isTemporaryAllowActive } from "./session-manager.js";
+
+const UNLOCK_QUESTION_MIN_OPERAND = 10;
+const UNLOCK_QUESTION_MAX_OPERAND = 99;
+const UNLOCK_QUESTION_HISTORY_RETENTION_MS = UNLOCK_QUESTION_HISTORY_RETENTION_DAYS * 24 * 60 * 60 * 1000;
 
 function createDefaultUnlockState() {
   return {
     failedCount: 0,
     cooldownUntil: null,
-    pendingChallenge: null,
-    pendingResult: null
+    pendingChallengeId: null,
+    pendingResultAvailable: false
   };
 }
 
 function ensureUnlockState(session) {
   session.unlockState = {
     ...createDefaultUnlockState(),
-    ...(session.unlockState ?? {})
+    failedCount: Number.isInteger(session.unlockState?.failedCount) && session.unlockState.failedCount > 0
+      ? session.unlockState.failedCount
+      : 0,
+    cooldownUntil: typeof session.unlockState?.cooldownUntil === "number"
+      ? session.unlockState.cooldownUntil
+      : null,
+    pendingChallengeId: typeof session.unlockState?.pendingChallengeId === "string"
+      ? session.unlockState.pendingChallengeId
+      : null,
+    pendingResultAvailable: Boolean(session.unlockState?.pendingResultAvailable)
   };
 
   return session.unlockState;
@@ -30,25 +50,100 @@ function formatQuestionPrompt(question) {
   return question?.prompt ?? "";
 }
 
-function createQuestion() {
-  const left = Math.floor(Math.random() * 90) + 10;
-  const right = Math.floor(Math.random() * 90) + 10;
+function createQuestionKey(left, right) {
+  return `${Math.min(left, right)}x${Math.max(left, right)}`;
+}
+
+function createQuestion(left, right) {
+  const shouldSwapOperands = left !== right && Math.random() >= 0.5;
+  const displayLeft = shouldSwapOperands ? right : left;
+  const displayRight = shouldSwapOperands ? left : right;
+
   return {
     id: crypto.randomUUID(),
-    left,
-    right,
-    prompt: `${left} x ${right}`,
+    key: createQuestionKey(left, right),
+    left: displayLeft,
+    right: displayRight,
+    prompt: `${displayLeft} x ${displayRight}`,
     answer: left * right
   };
 }
 
-function buildChallenge() {
-  const questions = Array.from({ length: UNLOCK_QUESTION_COUNT }, () => createQuestion());
+function getQuestionHistoryCutoff(now = Date.now()) {
+  return now - UNLOCK_QUESTION_HISTORY_RETENTION_MS;
+}
 
+function pruneQuestionHistoryEntries(questionHistory, now = Date.now()) {
+  const cutoff = getQuestionHistoryCutoff(now);
+  return (Array.isArray(questionHistory) ? questionHistory : []).filter((entry) => entry.createdAt >= cutoff);
+}
+
+function buildRecentQuestionKeySet(questionHistory, now = Date.now()) {
+  return new Set(pruneQuestionHistoryEntries(questionHistory, now).map((entry) => entry.key));
+}
+
+function mergeQuestionHistoryEntries(questionHistory, questions, now = Date.now()) {
+  const entriesByKey = new Map();
+
+  for (const entry of pruneQuestionHistoryEntries(questionHistory, now)) {
+    const currentCreatedAt = entriesByKey.get(entry.key) ?? 0;
+    entriesByKey.set(entry.key, Math.max(currentCreatedAt, entry.createdAt));
+  }
+
+  for (const question of questions) {
+    entriesByKey.set(question.key ?? createQuestionKey(question.left, question.right), now);
+  }
+
+  return Array.from(entriesByKey.entries())
+    .map(([key, createdAt]) => ({ key, createdAt }))
+    .sort((left, right) => right.createdAt - left.createdAt);
+}
+
+function buildAvailableQuestionPool(recentQuestionKeys) {
+  const pool = [];
+
+  for (let left = UNLOCK_QUESTION_MIN_OPERAND; left <= UNLOCK_QUESTION_MAX_OPERAND; left += 1) {
+    for (let right = left; right <= UNLOCK_QUESTION_MAX_OPERAND; right += 1) {
+      const key = createQuestionKey(left, right);
+
+      if (recentQuestionKeys.has(key)) {
+        continue;
+      }
+
+      pool.push({ left, right });
+    }
+  }
+
+  return pool;
+}
+
+function selectRandomQuestions(questionHistory, now = Date.now()) {
+  const recentQuestionKeys = buildRecentQuestionKeySet(questionHistory, now);
+  const pool = buildAvailableQuestionPool(recentQuestionKeys);
+
+  if (pool.length < UNLOCK_QUESTION_COUNT) {
+    throw new AppError(
+      ERROR_CODES.UNLOCK_CHALLENGE_MISSING,
+      "最近 7 天内已用题目过多，暂时无法生成新的不重复题目，请稍后再试。"
+    );
+  }
+
+  const questions = [];
+
+  while (questions.length < UNLOCK_QUESTION_COUNT) {
+    const randomIndex = Math.floor(Math.random() * pool.length);
+    const [selection] = pool.splice(randomIndex, 1);
+    questions.push(createQuestion(selection.left, selection.right));
+  }
+
+  return questions;
+}
+
+function buildChallenge(questionHistory, now = Date.now()) {
   return {
     id: crypto.randomUUID(),
-    createdAt: Date.now(),
-    questions
+    createdAt: now,
+    questions: selectRandomQuestions(questionHistory, now)
   };
 }
 
@@ -83,8 +178,10 @@ async function safeRecordUnlockAttempt(record) {
   }
 }
 
-export async function getUnlockContext() {
-  const state = await updateState((draftState) => {
+async function ensureChallengeState() {
+  let challenge = null;
+
+  const state = await updateState(async (draftState) => {
     if (!isSessionActive(draftState.currentSession) || isTemporaryAllowActive(draftState.currentSession)) {
       return draftState;
     }
@@ -92,12 +189,34 @@ export async function getUnlockContext() {
     const unlockState = ensureUnlockState(draftState.currentSession);
     const cooldownRemainingMs = getCooldownRemainingMs(unlockState);
 
-    if (!unlockState.pendingResult && cooldownRemainingMs <= 0 && !unlockState.pendingChallenge) {
-      unlockState.pendingChallenge = buildChallenge();
-      draftState.currentSession.updatedAt = Date.now();
+    if (unlockState.pendingResultAvailable || cooldownRemainingMs > 0) {
+      return draftState;
     }
+
+    challenge = unlockState.pendingChallengeId ? await readUnlockChallenge(draftState.currentSession.id) : null;
+
+    if (challenge?.id === unlockState.pendingChallengeId) {
+      return draftState;
+    }
+
+    const now = Date.now();
+    challenge = buildChallenge(draftState[STORAGE_KEYS.UNLOCK_QUESTION_HISTORY], now);
+    unlockState.pendingChallengeId = challenge.id;
+    draftState[STORAGE_KEYS.UNLOCK_QUESTION_HISTORY] = mergeQuestionHistoryEntries(
+      draftState[STORAGE_KEYS.UNLOCK_QUESTION_HISTORY],
+      challenge.questions,
+      now
+    );
+    draftState.currentSession.updatedAt = now;
+    await writeUnlockChallenge(draftState.currentSession.id, challenge);
   });
-  const session = state.currentSession;
+
+  return { state, challenge };
+}
+
+export async function getUnlockContext() {
+  let { state, challenge } = await ensureChallengeState();
+  let session = state.currentSession;
 
   if (!isSessionActive(session)) {
     return {
@@ -109,10 +228,10 @@ export async function getUnlockContext() {
     return buildTemporaryAllowLockedContext(session);
   }
 
-  const unlockState = ensureUnlockState(session);
+  let unlockState = ensureUnlockState(session);
   const cooldownRemainingMs = getCooldownRemainingMs(unlockState);
 
-  if (unlockState.pendingResult) {
+  if (unlockState.pendingResultAvailable) {
     return {
       hasActiveSession: true,
       stage: "choice",
@@ -131,12 +250,39 @@ export async function getUnlockContext() {
     };
   }
 
+  let activeChallenge = challenge?.id === unlockState.pendingChallengeId
+    ? challenge
+    : await readUnlockChallenge(session.id);
+
+  if (!activeChallenge || activeChallenge.id !== unlockState.pendingChallengeId) {
+    await clearUnlockChallenge(session.id);
+    ({ state, challenge } = await ensureChallengeState());
+    session = state.currentSession;
+
+    if (!isSessionActive(session)) {
+      return {
+        hasActiveSession: false
+      };
+    }
+
+    if (isTemporaryAllowActive(session)) {
+      return buildTemporaryAllowLockedContext(session);
+    }
+
+    unlockState = ensureUnlockState(session);
+    activeChallenge = challenge;
+  }
+
+  if (!activeChallenge || activeChallenge.id !== unlockState.pendingChallengeId) {
+    throw new AppError(ERROR_CODES.UNLOCK_CHALLENGE_MISSING, "当前没有可用的解锁题目，请刷新后重试。");
+  }
+
   return {
     hasActiveSession: true,
     stage: "challenge",
     currentSession: session,
     cooldownRemainingMs: 0,
-    questions: serializeQuestions(unlockState.pendingChallenge)
+    questions: serializeQuestions(activeChallenge)
   };
 }
 
@@ -150,8 +296,9 @@ export async function submitUnlockAnswers({ reason, answers }) {
   const normalizedAnswers = (Array.isArray(answers) ? answers : []).map((answer) => Number(answer));
   let response = null;
   let attemptRecord = null;
+  let challengeSessionId = null;
 
-  await updateState((state) => {
+  await updateState(async (state) => {
     const session = state.currentSession;
 
     if (!isSessionActive(session)) {
@@ -183,28 +330,28 @@ export async function submitUnlockAnswers({ reason, answers }) {
       return state;
     }
 
-    const challenge = unlockState.pendingChallenge;
+    const challenge = unlockState.pendingChallengeId ? await readUnlockChallenge(session.id) : null;
 
-    if (!challenge) {
+    if (!challenge || challenge.id !== unlockState.pendingChallengeId) {
+      unlockState.pendingChallengeId = null;
+      session.updatedAt = Date.now();
       throw new AppError(ERROR_CODES.UNLOCK_CHALLENGE_MISSING, "当前没有可用的解锁题目，请刷新后重试。");
     }
 
-    const score = challenge.questions.reduce((sum, question, index) => {
-      return sum + (normalizedAnswers[index] === question.answer ? 1 : 0);
-    }, 0);
+    const incorrectIndexes = challenge.questions.reduce((indexes, question, index) => {
+      if (normalizedAnswers[index] !== question.answer) {
+        indexes.push(index);
+      }
+
+      return indexes;
+    }, []);
+
+    const score = challenge.questions.length - incorrectIndexes.length;
+    challengeSessionId = session.id;
 
     if (score === challenge.questions.length) {
-      unlockState.pendingResult = {
-        challengeId: challenge.id,
-        reason: cleanReason,
-        questionSet: challenge.questions.map((question) => ({
-          prompt: formatQuestionPrompt(question),
-          answer: question.answer
-        })),
-        answers: normalizedAnswers,
-        score
-      };
-      unlockState.pendingChallenge = null;
+      unlockState.pendingResultAvailable = true;
+      unlockState.pendingChallengeId = null;
       unlockState.cooldownUntil = null;
       session.updatedAt = Date.now();
       response = {
@@ -216,7 +363,7 @@ export async function submitUnlockAnswers({ reason, answers }) {
     }
 
     unlockState.failedCount = (unlockState.failedCount ?? 0) + 1;
-    unlockState.pendingChallenge = null;
+    unlockState.pendingChallengeId = null;
 
     if (state.settings.unlockCooldownEnabled) {
       unlockState.cooldownUntil = Date.now() + Number(state.settings.unlockCooldownMinutes) * 60 * 1000;
@@ -227,9 +374,6 @@ export async function submitUnlockAnswers({ reason, answers }) {
     session.updatedAt = Date.now();
     attemptRecord = {
       sessionId: session.id,
-      reason: cleanReason,
-      questionSet: challenge.questions.map((question) => ({ prompt: formatQuestionPrompt(question), answer: question.answer })),
-      answers: normalizedAnswers,
       score,
       result: "failed",
       cooldownUntil: unlockState.cooldownUntil
@@ -238,10 +382,15 @@ export async function submitUnlockAnswers({ reason, answers }) {
       passed: false,
       code: ERROR_CODES.UNLOCK_ANSWERS_INCORRECT,
       score,
+      incorrectIndexes,
       cooldownRemainingMs: getCooldownRemainingMs(unlockState),
       message: "答题未全部正确。"
     };
   });
+
+  if (challengeSessionId) {
+    await clearUnlockChallenge(challengeSessionId);
+  }
 
   if (attemptRecord) {
     await safeRecordUnlockAttempt(attemptRecord);
@@ -266,20 +415,19 @@ export async function applyUnlockResult(result) {
     throw new AppError(ERROR_CODES.UNLOCK_TEMP_ALLOW_ACTIVE, "当前已处于临时放行阶段，倒计时结束前不可再次应急解锁。");
   }
 
-  const pendingResult = ensureUnlockState(session).pendingResult;
+  const pendingResultAvailable = ensureUnlockState(session).pendingResultAvailable;
 
-  if (!pendingResult) {
+  if (!pendingResultAvailable) {
     throw new AppError(ERROR_CODES.UNLOCK_PENDING_RESULT_MISSING, "当前没有待确认的解锁结果。");
   }
+
+  await clearUnlockChallenge(session.id);
 
   if (result === "temporary_allow") {
     await applyTemporaryAllow({ clearPendingResult: true });
     await safeRecordUnlockAttempt({
       sessionId: session.id,
-      reason: pendingResult.reason,
-      questionSet: pendingResult.questionSet,
-      answers: pendingResult.answers,
-      score: pendingResult.score,
+      score: UNLOCK_QUESTION_COUNT,
       result,
       allowMinutes: TEMP_ALLOW_MINUTES
     });
@@ -298,10 +446,7 @@ export async function applyUnlockResult(result) {
 
   await safeRecordUnlockAttempt({
     sessionId: session.id,
-    reason: pendingResult.reason,
-    questionSet: pendingResult.questionSet,
-    answers: pendingResult.answers,
-    score: pendingResult.score,
+    score: UNLOCK_QUESTION_COUNT,
     result
   });
 
@@ -310,4 +455,3 @@ export async function applyUnlockResult(result) {
     message: "当前专注会话已结束。"
   };
 }
-

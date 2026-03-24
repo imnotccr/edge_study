@@ -1,4 +1,4 @@
-﻿:root {
+:root {
   --popup-width: 360px;
   --popup-height: 412px;
   /* Adjust this value to scale the top-left brand badge and its rounded edge together. */
@@ -235,3 +235,512 @@
 }
 
 
+
+/* Popup refresh */
+.popup-body {
+  background:
+    radial-gradient(circle at 16% 12%, rgba(255, 117, 110, 0.24), transparent 28%),
+    radial-gradient(circle at 84% 14%, rgba(101, 183, 255, 0.16), transparent 24%),
+    linear-gradient(180deg, #090b12 0%, #06070a 100%);
+}
+
+.popup-body::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(circle at 22% 18%, rgba(255, 124, 118, 0.22), transparent 18%),
+    radial-gradient(circle at 78% 22%, rgba(108, 197, 255, 0.16), transparent 18%),
+    radial-gradient(circle at 50% 86%, rgba(255, 209, 102, 0.1), transparent 16%);
+  filter: blur(30px);
+  opacity: 0.9;
+  pointer-events: none;
+}
+
+.popup-shell {
+  position: relative;
+  isolation: isolate;
+}
+
+.popup-shell .hero {
+  position: relative;
+  padding: 16px;
+  border-radius: 22px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background:
+    linear-gradient(135deg, rgba(255, 255, 255, 0.06), rgba(255, 255, 255, 0.015) 56%),
+    linear-gradient(160deg, rgba(11, 13, 20, 0.84), rgba(9, 11, 18, 0.66));
+  box-shadow: 0 18px 34px rgba(0, 0, 0, 0.24);
+  overflow: hidden;
+}
+
+.popup-shell .hero::before {
+  content: "";
+  position: absolute;
+  left: -42px;
+  top: -58px;
+  width: 160px;
+  height: 160px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(255, 118, 111, 0.28), transparent 68%);
+}
+
+.popup-shell .hero::after {
+  content: "";
+  position: absolute;
+  right: -58px;
+  bottom: -76px;
+  width: 180px;
+  height: 180px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(108, 197, 255, 0.22), transparent 68%);
+}
+
+.popup-shell .hero > * {
+  position: relative;
+  z-index: 1;
+}
+
+.popup-shell .card {
+  position: relative;
+  overflow: hidden;
+  background:
+    linear-gradient(180deg, rgba(18, 22, 30, 0.92), rgba(12, 15, 22, 0.88)),
+    var(--panel);
+  border-color: rgba(255, 255, 255, 0.07);
+  box-shadow: 0 18px 40px rgba(0, 0, 0, 0.22);
+}
+
+.popup-shell .card::before {
+  content: "";
+  position: absolute;
+  inset: 0 0 auto;
+  height: 88px;
+  background: linear-gradient(180deg, rgba(255, 92, 87, 0.08), transparent 78%);
+  pointer-events: none;
+}
+
+.popup-shell .metric,
+.debug-strip {
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.045), rgba(255, 255, 255, 0.015)),
+    var(--panel-soft);
+  border-color: rgba(255, 255, 255, 0.07);
+}
+
+.popup-shell .status-badge {
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.debug-strip {
+  box-shadow: 0 14px 24px rgba(0, 0, 0, 0.14);
+}
+
+:root[data-theme="light"] .popup-body {
+  background:
+    radial-gradient(circle at 16% 12%, rgba(255, 138, 124, 0.26), transparent 24%),
+    radial-gradient(circle at 84% 14%, rgba(122, 188, 255, 0.18), transparent 22%),
+    linear-gradient(180deg, #fbfcff 0%, #eef3fb 100%);
+}
+
+:root[data-theme="light"] .popup-shell .hero {
+  border-color: rgba(17, 19, 24, 0.08);
+  background:
+    linear-gradient(135deg, rgba(255, 255, 255, 0.84), rgba(255, 255, 255, 0.58) 56%),
+    linear-gradient(160deg, rgba(243, 247, 252, 0.94), rgba(237, 242, 248, 0.82));
+  box-shadow: 0 16px 30px rgba(67, 82, 106, 0.1);
+}
+
+:root[data-theme="light"] .popup-shell .card,
+:root[data-theme="light"] .debug-strip {
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.92), rgba(248, 250, 253, 0.8));
+  border-color: rgba(17, 19, 24, 0.08);
+  box-shadow: 0 14px 28px rgba(67, 82, 106, 0.08);
+}
+
+:root[data-theme="light"] .popup-shell .metric {
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.9), rgba(245, 248, 252, 0.78));
+  border-color: rgba(17, 19, 24, 0.08);
+}
+/* Popup micro polish */
+.popup-shell .brand-banner {
+  position: relative;
+}
+
+.popup-shell .brand-banner::after {
+  content: "";
+  position: absolute;
+  left: calc(var(--brand-mark-size) + var(--brand-mark-gap));
+  right: 0;
+  bottom: -6px;
+  height: 1px;
+  background: linear-gradient(90deg, rgba(255, 255, 255, 0.16), transparent 78%);
+  opacity: 0.72;
+}
+
+.popup-shell .button-grid .button {
+  letter-spacing: 0.01em;
+}
+
+@keyframes popup-brand-float {
+  0%,
+  100% {
+    transform: translateY(0) rotate(0deg);
+  }
+
+  50% {
+    transform: translateY(-2px) rotate(-1.5deg);
+  }
+}
+
+@media (hover: hover) {
+  .popup-shell .brand-banner .brand-mark:hover {
+    transform: translateY(-1px) rotate(-2deg);
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.08),
+      0 18px 36px rgba(8, 10, 16, 0.4);
+  }
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .popup-shell .brand-banner .brand-mark {
+    animation: popup-brand-float 10s ease-in-out infinite;
+  }
+}
+/* Popup typography polish */
+.popup-shell h1 {
+  line-height: 1.08;
+  letter-spacing: 0.01em;
+}
+
+.popup-shell .hero p {
+  max-width: 24ch;
+  font-size: 13px;
+}
+
+.popup-shell .card {
+  padding: 15px;
+}
+
+.popup-shell .metric .label {
+  letter-spacing: 0.04em;
+}
+
+.popup-shell .metric strong {
+  line-height: 1.15;
+}
+
+.popup-shell .button-grid .button,
+.popup-shell .button-grid button.button,
+.popup-shell .button-grid a.button {
+  min-height: 42px;
+}
+
+.debug-strip {
+  align-items: flex-start;
+}
+
+#popupMessage {
+  min-height: 36px;
+  line-height: 1.55;
+}
+/* Popup background motion */
+.popup-body::after {
+  inset: -14%;
+  transform: translate3d(0, 0, 0) scale(1.05);
+  transform-origin: 50% 50%;
+  will-change: transform;
+}
+
+.popup-body::before {
+  will-change: background-position;
+}
+
+@keyframes popup-grid-drift {
+  0% {
+    background-position: 0 0, 0 0;
+  }
+
+  100% {
+    background-position: 18px 12px, 24px 18px;
+  }
+}
+
+@keyframes popup-aurora-drift {
+  0% {
+    transform: translate3d(-3%, -2%, 0) scale(1.04) rotate(0deg);
+  }
+
+  50% {
+    transform: translate3d(2%, 1%, 0) scale(1.1) rotate(4deg);
+  }
+
+  100% {
+    transform: translate3d(-1.5%, 2%, 0) scale(1.07) rotate(-3deg);
+  }
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .popup-body::before {
+    animation: popup-grid-drift 28s linear infinite;
+  }
+
+  .popup-body::after {
+    animation: popup-aurora-drift 18s ease-in-out infinite alternate;
+  }
+}
+/* Popup aurora rollout */
+.popup-body,
+:root[data-theme="light"] .popup-body {
+  color-scheme: dark;
+  background:
+    radial-gradient(circle at 14% 12%, rgba(255, 132, 98, 0.18), transparent 24%),
+    radial-gradient(circle at 84% 14%, rgba(108, 196, 255, 0.16), transparent 22%),
+    linear-gradient(180deg, #04070e 0%, #060912 44%, #04060b 100%);
+}
+
+.popup-body::before,
+:root[data-theme="light"] .popup-body::before {
+  background-image:
+    linear-gradient(rgba(255, 255, 255, 0.022) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.022) 1px, transparent 1px);
+  opacity: 0.24;
+}
+
+.popup-body::after,
+:root[data-theme="light"] .popup-body::after {
+  inset: -20%;
+  background:
+    radial-gradient(ellipse at 18% 18%, rgba(255, 132, 98, 0.22), transparent 38%),
+    radial-gradient(ellipse at 82% 20%, rgba(108, 196, 255, 0.18), transparent 38%),
+    linear-gradient(118deg, rgba(255, 132, 98, 0.08), rgba(108, 196, 255, 0.06) 56%, rgba(96, 236, 188, 0.05));
+  filter: blur(52px) saturate(136%);
+  opacity: 0.84;
+}
+
+.popup-shell {
+  isolation: isolate;
+  overflow: visible;
+}
+
+.popup-shell::before,
+.popup-shell::after {
+  content: "";
+  position: absolute;
+  left: 50%;
+  pointer-events: none;
+  z-index: 0;
+  transform: translateX(-50%);
+  transform-origin: 50% 50%;
+  filter: blur(42px) saturate(140%);
+  mix-blend-mode: screen;
+  will-change: transform, opacity;
+}
+
+.popup-shell::before {
+  top: -10px;
+  width: 132%;
+  height: 120px;
+  background: linear-gradient(108deg, transparent 10%, rgba(255, 132, 98, 0.22) 26%, rgba(108, 196, 255, 0.16) 58%, transparent 92%);
+  opacity: 0.76;
+}
+
+.popup-shell::after {
+  top: 54px;
+  width: 118%;
+  height: 88px;
+  background: linear-gradient(112deg, transparent 12%, rgba(96, 236, 188, 0.16) 28%, rgba(108, 196, 255, 0.14) 54%, transparent 90%);
+  opacity: 0.56;
+}
+
+.popup-shell > * {
+  position: relative;
+  z-index: 1;
+}
+
+.popup-shell .hero,
+:root[data-theme="light"] .popup-shell .hero {
+  border-color: rgba(255, 255, 255, 0.08);
+  background:
+    linear-gradient(135deg, rgba(255, 255, 255, 0.065), rgba(255, 255, 255, 0.018) 56%),
+    linear-gradient(160deg, rgba(8, 11, 19, 0.86), rgba(7, 10, 18, 0.7));
+  box-shadow: 0 18px 34px rgba(0, 0, 0, 0.28);
+}
+
+.popup-shell .card,
+.debug-strip,
+:root[data-theme="light"] .popup-shell .card,
+:root[data-theme="light"] .debug-strip {
+  background:
+    linear-gradient(180deg, rgba(12, 15, 23, 0.92), rgba(10, 13, 20, 0.88)),
+    var(--panel);
+  border-color: rgba(255, 255, 255, 0.075);
+  box-shadow: 0 16px 30px rgba(0, 0, 0, 0.22);
+}
+
+.popup-shell .metric,
+:root[data-theme="light"] .popup-shell .metric {
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.045), rgba(255, 255, 255, 0.015)),
+    var(--panel-soft);
+  border-color: rgba(255, 255, 255, 0.075);
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .popup-body::before {
+    animation: popup-grid-drift 24s linear infinite;
+  }
+
+  .popup-body::after {
+    animation: popup-aurora-drift 16s ease-in-out infinite alternate;
+  }
+
+  .popup-shell::before {
+    animation: aurora-ribbon-primary 11s ease-in-out infinite alternate;
+  }
+
+  .popup-shell::after {
+    animation: aurora-ribbon-secondary 14s ease-in-out infinite alternate;
+  }
+}
+/* Popup aurora intensify v2 */
+.popup-body,
+:root[data-theme="light"] .popup-body {
+  background:
+    radial-gradient(circle at 10% 10%, rgba(255, 132, 98, 0.22), transparent 22%),
+    radial-gradient(circle at 88% 12%, rgba(108, 196, 255, 0.18), transparent 20%),
+    radial-gradient(circle at 54% 82%, rgba(96, 236, 188, 0.1), transparent 18%),
+    linear-gradient(180deg, #04070f 0%, #050912 38%, #03050a 100%);
+}
+
+.popup-body::after,
+:root[data-theme="light"] .popup-body::after {
+  inset: -26%;
+  transform: translate3d(0, 0, 0) scale(1.08);
+  background:
+    radial-gradient(ellipse at 16% 16%, rgba(255, 132, 98, 0.32) 0%, rgba(255, 132, 98, 0.1) 20%, transparent 42%),
+    radial-gradient(ellipse at 84% 18%, rgba(108, 196, 255, 0.28) 0%, rgba(108, 196, 255, 0.08) 18%, transparent 40%),
+    radial-gradient(ellipse at 54% 82%, rgba(96, 236, 188, 0.14) 0%, rgba(96, 236, 188, 0.04) 14%, transparent 30%),
+    linear-gradient(118deg, rgba(255, 132, 98, 0.12), rgba(108, 196, 255, 0.1) 48%, rgba(96, 236, 188, 0.08) 76%, rgba(255, 132, 98, 0.06));
+  filter: blur(46px) saturate(148%);
+  opacity: 0.94;
+}
+
+.popup-shell::before,
+.popup-shell::after {
+  filter: blur(34px) saturate(148%);
+}
+
+.popup-shell::before {
+  top: -18px;
+  width: 142%;
+  height: 136px;
+  background:
+    linear-gradient(106deg, transparent 8%, rgba(255, 132, 98, 0.28) 20%, rgba(108, 196, 255, 0.22) 48%, rgba(96, 236, 188, 0.14) 74%, transparent 92%),
+    radial-gradient(ellipse at 28% 54%, rgba(255, 132, 98, 0.22), transparent 34%),
+    radial-gradient(ellipse at 74% 42%, rgba(108, 196, 255, 0.18), transparent 28%);
+  opacity: 0.88;
+}
+
+.popup-shell::after {
+  top: 52px;
+  width: 128%;
+  height: 108px;
+  background:
+    linear-gradient(114deg, transparent 10%, rgba(96, 236, 188, 0.18) 24%, rgba(108, 196, 255, 0.18) 48%, rgba(255, 132, 98, 0.14) 74%, transparent 90%),
+    radial-gradient(ellipse at 34% 48%, rgba(96, 236, 188, 0.16), transparent 28%),
+    radial-gradient(ellipse at 78% 40%, rgba(255, 132, 98, 0.16), transparent 26%);
+  opacity: 0.7;
+}
+
+.popup-shell .hero,
+:root[data-theme="light"] .popup-shell .hero {
+  box-shadow: 0 22px 42px rgba(0, 0, 0, 0.32);
+}
+
+.popup-shell .hero::before {
+  left: -58px;
+  top: -72px;
+  width: 190px;
+  height: 190px;
+  background: radial-gradient(circle, rgba(255, 132, 98, 0.38), transparent 70%);
+  filter: blur(10px);
+  opacity: 0.94;
+}
+
+.popup-shell .hero::after {
+  right: -74px;
+  bottom: -94px;
+  width: 210px;
+  height: 210px;
+  background: radial-gradient(circle, rgba(108, 196, 255, 0.3), transparent 72%);
+  filter: blur(12px);
+  opacity: 0.88;
+}
+
+.popup-shell .card::before {
+  height: 112px;
+  background: linear-gradient(180deg, rgba(255, 132, 98, 0.14), rgba(108, 196, 255, 0.06) 52%, transparent 84%);
+  opacity: 0.8;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .popup-body::before {
+    animation: popup-grid-drift 22s linear infinite;
+  }
+
+  .popup-body::after {
+    animation: aurora-field-drift-strong 14s ease-in-out infinite alternate;
+  }
+
+  .popup-shell::before {
+    animation: aurora-ribbon-primary-strong 9s ease-in-out infinite alternate;
+  }
+
+  .popup-shell::after {
+    animation: aurora-ribbon-secondary-strong 12s ease-in-out infinite alternate;
+  }
+
+  .popup-shell .hero::before {
+    animation: aurora-hero-glow-strong 10s ease-in-out infinite alternate;
+  }
+
+  .popup-shell .hero::after {
+    animation: aurora-hero-glow-strong 13s ease-in-out infinite alternate-reverse;
+  }
+
+  .popup-shell .card::before {
+    animation: aurora-card-glow-strong 14s ease-in-out infinite alternate;
+  }
+}
+/* End popup aurora intensify v2 */
+/* Keep the popup content scrollable inside the fixed-size extension window. */
+.popup-shell {
+  height: 100%;
+  max-height: 100%;
+  overflow-x: hidden;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-gutter: stable;
+  padding-right: 12px;
+}
+/* Round the visible popup document edges with a softer outer blend. */
+.popup-root {
+  background:
+    radial-gradient(circle at 18% 12%, rgba(255, 132, 98, 0.14), transparent 24%),
+    radial-gradient(circle at 82% 14%, rgba(108, 196, 255, 0.12), transparent 24%),
+    linear-gradient(180deg, #07101a 0%, #06101a 46%, #04080f 100%) !important;
+}
+
+.popup-body {
+  border-radius: 20px;
+  clip-path: none;
+  overflow: hidden !important;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.05),
+    0 14px 32px rgba(0, 0, 0, 0.22);
+}
+
+.popup-shell {
+  border-radius: inherit;
+}

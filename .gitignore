@@ -5,6 +5,8 @@ Thumbs.db
 *.log
 *.tmp
 *.zip
+dist/
+release/
 
 # Local design drafts and preview exports
 assets/test-*.png

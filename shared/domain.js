@@ -29,6 +29,20 @@ export function extractDomainFromUrl(url) {
   }
 }
 
+export function extractOriginFromUrl(url) {
+  try {
+    const parsed = new URL(url);
+
+    if (!/^https?:$/.test(parsed.protocol)) {
+      return null;
+    }
+
+    return parsed.origin;
+  } catch {
+    return null;
+  }
+}
+
 export function matchesWhitelistHost(host, whitelistEntries) {
   const normalizedHost = host.toLowerCase();
 

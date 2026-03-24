@@ -14,7 +14,7 @@ function buildAllowRule(entry, id) {
     },
     condition: {
       regexFilter: `^https?://${hostPattern}(?::\\d+)?(?:/|$)`,
-      resourceTypes: ["main_frame"]
+      resourceTypes: ["main_frame", "sub_frame"]
     }
   };
 }
@@ -32,6 +32,20 @@ function buildRedirectRule() {
     condition: {
       regexFilter: "^https?://",
       resourceTypes: ["main_frame"]
+    }
+  };
+}
+
+function buildSubFrameBlockRule() {
+  return {
+    id: 2,
+    priority: 1,
+    action: {
+      type: "block"
+    },
+    condition: {
+      regexFilter: "^https?://",
+      resourceTypes: ["sub_frame"]
     }
   };
 }
@@ -56,7 +70,7 @@ export async function applyFocusRules(session) {
   }
 
   const rules = session.whitelistSnapshot.map((entry, index) => buildAllowRule(entry, 1000 + index));
-  rules.push(buildRedirectRule());
+  rules.push(buildRedirectRule(), buildSubFrameBlockRule());
 
   await chrome.declarativeNetRequest.updateDynamicRules({
     addRules: rules,

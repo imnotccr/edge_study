@@ -1,4 +1,4 @@
-import { MESSAGE_TYPES, PAGE_PATHS } from "../shared/constants.js";
+import { MESSAGE_TYPES, PAGE_PATHS, UNLOCK_QUESTION_COUNT } from "../shared/constants.js";
 import { reportPageError, installGlobalErrorHandlers } from "../shared/error-log.js";
 import { ERROR_CODES, formatErrorLabel } from "../shared/errors.js";
 import { sendRuntimeMessage } from "../shared/api.js";
@@ -18,6 +18,7 @@ const elements = {
   unlockChallengeCard: document.querySelector("#unlockChallengeCard"),
   unlockReasonInput: document.querySelector("#unlockReasonInput"),
   unlockReasonField: document.querySelector("#unlockReasonInput")?.closest(".field"),
+  questionField: document.querySelector("#questionList")?.closest(".field"),
   questionList: document.querySelector("#questionList"),
   submitUnlockButton: document.querySelector("#submitUnlockButton"),
   unlockCooldownCard: document.querySelector("#unlockCooldownCard"),
@@ -69,9 +70,62 @@ function triggerReasonValidationFeedback() {
   elements.unlockReasonInput.setAttribute("aria-invalid", "true");
   elements.unlockReasonInput.focus({ preventScroll: true });
 }
+
+function clearAnswerValidationFeedback() {
+  elements.questionField?.classList.remove("shake-warning");
+
+  for (const item of elements.questionList.querySelectorAll(".list-item")) {
+    item.classList.remove("answer-error");
+  }
+
+  for (const input of elements.questionList.querySelectorAll("[data-answer-index]")) {
+    input.classList.remove("invalid", "wrong-answer");
+    input.removeAttribute("aria-invalid");
+  }
+}
+
+function triggerAnswerValidationFeedback(incorrectIndexes = []) {
+  clearAnswerValidationFeedback();
+
+  if (!elements.questionField) {
+    return;
+  }
+
+  void elements.questionField.offsetWidth;
+  elements.questionField.classList.add("shake-warning");
+
+  const answerInputs = Array.from(elements.questionList.querySelectorAll("[data-answer-index]"));
+  const targetIndexes = incorrectIndexes.length
+    ? incorrectIndexes
+    : answerInputs.map((_, index) => index);
+
+  for (const index of targetIndexes) {
+    const input = answerInputs[index];
+    if (!input) {
+      continue;
+    }
+
+    input.classList.add("invalid", "wrong-answer");
+    input.setAttribute("aria-invalid", "true");
+    input.closest(".list-item")?.classList.add("answer-error");
+  }
+
+  const firstWrongInput = targetIndexes
+    .map((index) => answerInputs[index])
+    .find(Boolean);
+
+  firstWrongInput?.focus({ preventScroll: true });
+}
+
+function wait(ms) {
+  return new Promise((resolve) => {
+    window.setTimeout(resolve, ms);
+  });
+}
+
 function getRelatedPageLabel(url) {
   if (!url) {
-    return "当前没有可返回的原始页面";
+    return "当前没有可返回的相关页面";
   }
 
   try {
@@ -82,6 +136,7 @@ function getRelatedPageLabel(url) {
 }
 
 function renderQuestionList(questions) {
+  clearAnswerValidationFeedback();
   elements.questionList.innerHTML = "";
 
   for (const [index, question] of questions.entries()) {
@@ -89,7 +144,7 @@ function renderQuestionList(questions) {
     item.className = "list-item";
     item.innerHTML = `
       <div>
-        <div class="title">第 ${index + 1} 题 · ${question.prompt}</div>
+        <div class="title">第 ${index + 1} 题 ${question.prompt}</div>
         <div class="subtitle">请输入准确答案后一次性提交。</div>
       </div>
       <input class="input unlock-answer-input" data-answer-index="${index}" type="text" inputmode="numeric" autocomplete="off" placeholder="答案" style="max-width: 150px;" />
@@ -152,7 +207,13 @@ function renderStage() {
   }
 
   if (!hasActiveSession) {
-    showNotice(formatErrorLabel({ code: ERROR_CODES.FOCUS_NO_ACTIVE_SESSION, message: "当前没有进行中的专注会话。" }), "error");
+    showNotice(
+      formatErrorLabel({
+        code: ERROR_CODES.FOCUS_NO_ACTIVE_SESSION,
+        message: "当前没有进行中的专注会话。"
+      }),
+      "error"
+    );
     elements.unlockChallengeCard.classList.add("hidden");
     elements.unlockCooldownCard.classList.add("hidden");
     elements.unlockChoiceCard.classList.add("hidden");
@@ -168,7 +229,10 @@ function renderStage() {
   if (stage === "cooldown") {
     elements.cooldownRemainingText.textContent = formatCountdown(unlockContext.cooldownRemainingMs);
     showNotice(
-      formatErrorLabel({ code: unlockContext.code ?? ERROR_CODES.UNLOCK_COOLDOWN_ACTIVE, message: "当前仍处于冷却时间内。" }),
+      formatErrorLabel({
+        code: unlockContext.code ?? ERROR_CODES.UNLOCK_COOLDOWN_ACTIVE,
+        message: "当前仍处于冷却时间内。"
+      }),
       "error"
     );
   }
@@ -185,8 +249,10 @@ elements.questionList.addEventListener("input", (event) => {
     return;
   }
 
+  clearAnswerValidationFeedback();
   event.target.value = event.target.value.replace(/\D+/g, "");
 });
+
 async function loadContext() {
   const [nextUnlockContext, nextBlockContext] = await Promise.all([
     sendRuntimeMessage(MESSAGE_TYPES.GET_UNLOCK_CONTEXT),
@@ -216,7 +282,10 @@ async function submitAnswers() {
   clearReasonValidationFeedback();
 
   if (answers.some((answer) => answer === "")) {
-    const error = { code: ERROR_CODES.UNLOCK_ANSWERS_INCOMPLETE, message: "请完整填写 5 道题的答案。" };
+    const error = {
+      code: ERROR_CODES.UNLOCK_ANSWERS_INCOMPLETE,
+      message: `请完整填写 ${UNLOCK_QUESTION_COUNT} 道题的答案。`
+    };
     void reportPageError(error, "pages/unlock:submit", { kind: "validation" });
     showNotice(formatErrorLabel(error), "error");
     return;
@@ -229,8 +298,13 @@ async function submitAnswers() {
     });
 
     if (result.passed) {
+      clearAnswerValidationFeedback();
       showNotice(result.message, "success");
     } else {
+      if (result.code === ERROR_CODES.UNLOCK_ANSWERS_INCORRECT) {
+        triggerAnswerValidationFeedback(result.incorrectIndexes ?? []);
+        await wait(420);
+      }
       showNotice(formatErrorLabel(result), "error");
     }
 
@@ -243,7 +317,7 @@ async function submitAnswers() {
 async function applyResult(result) {
   try {
     const response = await sendRuntimeMessage(MESSAGE_TYPES.APPLY_UNLOCK_RESULT, { result });
-    const relatedUrl = blockContext?.blockedInfo?.url ?? null;
+    const relatedUrl = blockContext?.blockedInfo?.returnUrl ?? null;
 
     successState = {
       result,
@@ -331,4 +405,3 @@ window.addEventListener("beforeunload", () => {
     clearInterval(cooldownTimer);
   }
 });
-

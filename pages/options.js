@@ -1,4 +1,4 @@
-import { MESSAGE_TYPES } from "../shared/constants.js";
+﻿import { MESSAGE_TYPES } from "../shared/constants.js";
 import { reportPageError, installGlobalErrorHandlers } from "../shared/error-log.js";
 import { ERROR_CODES, formatErrorLabel } from "../shared/errors.js";
 import { sendRuntimeMessage } from "../shared/api.js";
@@ -45,6 +45,13 @@ function clearNotice() {
   elements.optionsNotice.className = "notice hidden";
 }
 
+function createTextElement(tagName, className, text) {
+  const element = document.createElement(tagName);
+  element.className = className;
+  element.textContent = text;
+  return element;
+}
+
 function setActivePanel(panel) {
   const whitelistActive = panel === "whitelist";
   elements.whitelistTabButton.classList.toggle("active", whitelistActive);
@@ -60,7 +67,7 @@ function renderPresets() {
     const button = document.createElement("button");
     button.type = "button";
     button.className = "chip";
-    button.textContent = `${preset.label} · ${preset.domain}`;
+    button.textContent = `${preset.label} 路 ${preset.domain}`;
     button.disabled = hasActiveSession;
     button.addEventListener("click", () => {
       const exists = draftWhitelist.some((entry) => entry.domain === preset.domain);
@@ -96,12 +103,12 @@ function renderWhitelist() {
   for (const entry of filteredItems) {
     const item = document.createElement("div");
     item.className = "list-item";
-    item.innerHTML = `
-      <div>
-        <div class="title">${entry.domain}</div>
-        <div class="subtitle">${entry.includeSubdomains ? "包含子域" : "仅当前域名"}</div>
-      </div>
-    `;
+
+    const wrapper = document.createElement("div");
+    wrapper.appendChild(createTextElement("div", "title", entry.domain));
+    wrapper.appendChild(
+      createTextElement("div", "subtitle", entry.includeSubdomains ? "包含子域名" : "仅当前域名")
+    );
 
     const removeButton = document.createElement("button");
     removeButton.type = "button";
@@ -113,7 +120,7 @@ function renderWhitelist() {
       renderWhitelist();
     });
 
-    item.appendChild(removeButton);
+    item.append(wrapper, removeButton);
     elements.whitelistList.appendChild(item);
   }
 }
@@ -160,7 +167,7 @@ function syncLockState() {
   elements.lockBanner.classList.toggle("hidden", !hasActiveSession);
 
   if (hasActiveSession) {
-    elements.lockBanner.textContent = "专注进行中，白名单和配置当前处于只读状态。";
+    elements.lockBanner.textContent = "专注进行中，白名单和设置当前处于只读状态。";
   }
 
   const controls = document.querySelectorAll("input, textarea, select, button");
@@ -252,7 +259,10 @@ elements.addDomainButton.addEventListener("click", () => {
   const domain = normalizeDomainInput(elements.domainInput.value ?? "");
 
   if (!domain) {
-    const error = { code: ERROR_CODES.SETTINGS_DOMAIN_INVALID, message: "请输入合法域名，不能包含协议、路径或端口。" };
+    const error = {
+      code: ERROR_CODES.SETTINGS_DOMAIN_INVALID,
+      message: "请输入合法域名，不能包含协议、路径或端口。"
+    };
     void reportPageError(error, "pages/options:add-domain", { kind: "validation" });
     showNotice(formatErrorLabel(error), "error");
     return;
@@ -261,7 +271,10 @@ elements.addDomainButton.addEventListener("click", () => {
   const exists = draftWhitelist.some((entry) => entry.domain === domain);
 
   if (exists) {
-    const error = { code: ERROR_CODES.SETTINGS_DOMAIN_DUPLICATE, message: `白名单中已存在域名：${domain}` };
+    const error = {
+      code: ERROR_CODES.SETTINGS_DOMAIN_DUPLICATE,
+      message: `白名单中已存在域名：${domain}`
+    };
     void reportPageError(error, "pages/options:add-domain", { kind: "validation", domain });
     showNotice(formatErrorLabel(error), "error");
     return;

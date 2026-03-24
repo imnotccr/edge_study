@@ -1,4 +1,4 @@
-export const DEVELOPMENT_BUILD = true;
+export const DEVELOPMENT_BUILD = false;
 
 export const STORAGE_KEYS = {
   SETTINGS: "settings",
@@ -7,8 +7,14 @@ export const STORAGE_KEYS = {
   SESSION_HISTORY: "sessionHistory",
   BLOCK_ATTEMPTS: "blockAttempts",
   UNLOCK_ATTEMPTS: "unlockAttempts",
+  UNLOCK_QUESTION_HISTORY: "unlockQuestionHistory",
   ERROR_LOGS: "errorLogs",
   TAB_BLOCK_STATE: "tabBlockState"
+};
+
+export const SESSION_STORAGE_KEYS = {
+  TAB_RESTORE_STATE: "tabRestoreState",
+  UNLOCK_PRIVATE_STATE: "unlockPrivateState"
 };
 
 export const MESSAGE_TYPES = {
@@ -46,6 +52,7 @@ export const CUSTOM_DURATION_CAP_OPTIONS = [
 
 export const TEMP_ALLOW_MINUTES = 10;
 export const UNLOCK_QUESTION_COUNT = 5;
+export const UNLOCK_QUESTION_HISTORY_RETENTION_DAYS = 7;
 export const DEFAULT_UNLOCK_COOLDOWN_MINUTES = 5;
 export const MAX_ERROR_LOGS = 200;
 
@@ -87,4 +94,3 @@ export const DASHBOARD_RANGES = [
 export function getDurationCapOption(value) {
   return CUSTOM_DURATION_CAP_OPTIONS.find((option) => option.value === value) ?? CUSTOM_DURATION_CAP_OPTIONS[0];
 }
-
