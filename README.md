@@ -27,4 +27,4 @@
 ## Release 发布建议
 
 - 优先上传你自己生成的 release zip
-- 不要依赖 GitHub 自动生成的 `Source code (zip)` 作为最终给用户安装的包
+- 不要依赖 GitHub 自动生成的 `Source code (zip)`  作为最终给用户安装的包
